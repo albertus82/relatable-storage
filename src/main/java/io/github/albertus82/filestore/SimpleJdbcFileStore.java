@@ -2,13 +2,19 @@ package io.github.albertus82.filestore;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StreamCorruptedException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -32,14 +38,16 @@ import org.springframework.jdbc.support.lob.LobCreator;
 
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
+	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
+	private static final String DIGEST_ALGORITHM = "SHA-256";
+	private static final String SQL_ESCAPE = "\\";
+
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
 	private final JdbcTemplate jdbcTemplate;
 	private final String tableName;
 	private final Compression compression;
 	private final BlobExtractor blobExtractor;
-
-	private static final String ESC = "\\";
 
 	public SimpleJdbcFileStore(final DataSource dataSource, final String tableName, final Compression compression, final BlobExtractor blobExtractor) {
 		Objects.requireNonNull(dataSource, "dataSource must not be null");
@@ -66,12 +74,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... filters) throws IOException {
-		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified FROM ").append(sanitizeTableName(tableName));
+		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ").append(sanitizeTableName(tableName));
 		final List<Object> args = new ArrayList<>();
 		if (filters != null && filters.length > 0) {
 			boolean first = true;
 			for (final String filter : filters) {
-				final String like = filter.replace(ESC, ESC + ESC).replace("%", ESC + "%").replace("_", ESC + "_").replace('*', '%').replace('?', '_');
+				final String like = filter.replace(SQL_ESCAPE, SQL_ESCAPE + SQL_ESCAPE).replace("%", SQL_ESCAPE + "%").replace("_", SQL_ESCAPE + "_").replace('*', '%').replace('?', '_');
 				if (first) {
 					sql.append(" WHERE ");
 					first = false;
@@ -81,12 +89,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				}
 				sql.append("filename LIKE ? ESCAPE ?");
 				args.add(like);
-				args.add(ESC);
+				args.add(SQL_ESCAPE);
 			}
 		}
 		log.log(Level.FINE, "{0}", sql);
 		try {
-			return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime()), args.toArray(new Object[args.size()]));
+			return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -94,14 +102,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public Resource get(final String fileName) throws IOException {
+	public DatabaseResource get(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final String sql = "SELECT content_length, last_modified FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
+		final String sql = "SELECT content_length, last_modified, sha256_base64 FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
 		log.fine(sql);
 		try {
 			return jdbcTemplate.query(sql, rs -> {
 				if (rs.next()) {
-					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime());
+					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(3))));
 				}
 				else {
 					throw new EmptyResultDataAccessException(1);
@@ -121,35 +129,35 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void store(final Resource resource, final String fileName) throws IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final long contentLength = insert(resource, fileName);
-		if (resource.isOpen()) {
-			final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET content_length = ? WHERE filename = ?";
-			log.fine(sql);
-			try {
-				jdbcTemplate.update(sql, contentLength, fileName);
-			}
-			catch (final DataAccessException e) {
-				throw new IOException(e);
-			}
+		final InsertResult ir = insert(resource, fileName);
+		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET content_length = ?, sha256_base64 = ? WHERE filename = ?";
+		log.fine(sql);
+		try {
+			jdbcTemplate.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getDigest()), fileName);
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
 		}
 	}
 
-	private long insert(final Resource resource, final String fileName) throws IOException {
+	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
-		final String sql = "INSERT INTO " + sanitizeTableName(tableName) + " (filename, content_length, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?, ?)";
+		final String sql = "INSERT INTO " + sanitizeTableName(tableName) + " (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)";
 		log.fine(sql);
-		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris); final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
+		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis); final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
 			jdbcTemplate.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 				@Override
 				protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
 					ps.setString(1, fileName);
-					ps.setLong(2, contentLength);
-					ps.setTimestamp(3, determineLastModifiedTimestamp(resource));
-					ps.setBoolean(4, !Compression.NONE.equals(compression));
-					lobCreator.setBlobAsBinaryStream(ps, 5, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+					ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
+					ps.setBoolean(3, !Compression.NONE.equals(compression));
+					lobCreator.setBlobAsBinaryStream(ps, 4, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
 				}
 			});
-			return cis.getCount();
+			if (contentLength != -1 && cis.getCount() != contentLength) {
+				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
+			}
+			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
 		}
 		catch (final DuplicateKeyException e) {
 			log.log(Level.FINE, e, () -> fileName);
@@ -157,6 +165,9 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
+		}
+		catch (final NoSuchAlgorithmException e) {
+			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
 		}
 	}
 
@@ -226,12 +237,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private final String fileName;
 		private final long contentLength;
 		private final long lastModified;
+		private final String sha256Hex;
 
-		private DatabaseResource(final String fileName, final long contentLength, final long lastModified) {
+		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String sha256Hex) {
 			Objects.requireNonNull(fileName, "fileName must not be null");
 			this.fileName = fileName;
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
+			this.sha256Hex = sha256Hex;
 		}
 
 		@Override
@@ -247,6 +260,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public long lastModified() {
 			return lastModified;
+		}
+
+		public String getSha256Hex() {
+			return sha256Hex;
 		}
 
 		@Override
@@ -303,6 +320,34 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return Deflater.DEFAULT_COMPRESSION;
 		default:
 			throw new IllegalArgumentException(compression.toString());
+		}
+	}
+
+	private static String bytesToHex(final byte[] bytes) {
+		byte[] hexChars = new byte[bytes.length * 2];
+		for (int j = 0; j < bytes.length; j++) {
+			int v = bytes[j] & 0xFF;
+			hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+			hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+		}
+		return new String(hexChars, StandardCharsets.UTF_8);
+	}
+
+	private static class InsertResult {
+		private final long contentLength;
+		private final byte[] digest;
+
+		private InsertResult(final long contentLength, final byte[] digest) {
+			this.contentLength = contentLength;
+			this.digest = digest;
+		}
+
+		private long getContentLength() {
+			return contentLength;
+		}
+
+		private byte[] getDigest() {
+			return digest;
 		}
 	}
 

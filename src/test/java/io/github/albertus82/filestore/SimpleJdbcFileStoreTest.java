@@ -44,6 +44,8 @@ import org.springframework.util.unit.DataSize;
 
 import com.thedeanda.lorem.LoremIpsum;
 
+import io.github.albertus82.filestore.SimpleJdbcFileStore.DatabaseResource;
+
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
 
@@ -354,6 +356,16 @@ class SimpleJdbcFileStoreTest {
 		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
+	}
+
+	@Test
+	void testHash() throws IOException {
+		final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", Compression.HIGH, new FileBufferedBlobExtractor());
+		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+			store.store(new InputStreamResource(is), "myfile.txt");
+		}
+		final DatabaseResource r = store.get("myfile.txt");
+		Assertions.assertEquals("9a900403ac313ba27a1bc81f0932652b8020dac92c234d98fa0b06bf0040ecfd", r.getSha256Hex());
 	}
 
 	private static Path createDummyFile(final DataSize size) throws IOException {
