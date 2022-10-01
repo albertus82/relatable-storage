@@ -133,7 +133,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET content_length = ?, sha256_base64 = ? WHERE filename = ?";
 		log.fine(sql);
 		try {
-			jdbcTemplate.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getDigest()), fileName);
+			jdbcTemplate.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -324,7 +324,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	private static String bytesToHex(final byte[] bytes) {
-		byte[] hexChars = new byte[bytes.length * 2];
+		final byte[] hexChars = new byte[bytes.length * 2];
 		for (int j = 0; j < bytes.length; j++) {
 			int v = bytes[j] & 0xFF;
 			hexChars[j * 2] = HEX_ARRAY[v >>> 4];
@@ -335,19 +335,19 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private static class InsertResult {
 		private final long contentLength;
-		private final byte[] digest;
+		private final byte[] sha256Digest;
 
-		private InsertResult(final long contentLength, final byte[] digest) {
+		private InsertResult(final long contentLength, final byte[] sha256Digest) {
 			this.contentLength = contentLength;
-			this.digest = digest;
+			this.sha256Digest = sha256Digest;
 		}
 
 		private long getContentLength() {
 			return contentLength;
 		}
 
-		private byte[] getDigest() {
-			return digest;
+		public byte[] getSha256Digest() {
+			return sha256Digest;
 		}
 	}
 

@@ -273,7 +273,7 @@ class SimpleJdbcFileStoreTest {
 				try {
 					for (final Compression compression : Compression.values()) {
 						final String fileName = UUID.randomUUID().toString();
-						final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", compression, be);
+						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", compression, be);
 						try (final InputStream is = Files.newInputStream(f)) {
 							Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
 						}
@@ -287,13 +287,17 @@ class SimpleJdbcFileStoreTest {
 							}
 						}
 						final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-						try (final InputStream stored = store.get(fileName).getInputStream()) {
+						final DatabaseResource dr = store.get(fileName);
+						try (final InputStream stored = dr.getInputStream()) {
 							int bytesCount = 0;
 							while ((bytesCount = stored.read(buffer)) != -1) {
 								digestStored.update(buffer, 0, bytesCount);
 							}
 						}
-						Assertions.assertArrayEquals(digestSource.digest(), digestStored.digest());
+						final byte[] sha256Source = digestSource.digest();
+						final byte[] sha256Stored = digestStored.digest();
+						Assertions.assertArrayEquals(sha256Source, sha256Stored);
+						Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
 					}
 				}
 				catch (IOException e) {
@@ -317,7 +321,7 @@ class SimpleJdbcFileStoreTest {
 			tempFile = createDummyFile(DataSize.ofMegabytes(32));
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
-				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", compression, new DirectBlobExtractor());
+				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", compression, new DirectBlobExtractor());
 				try (final InputStream is = Files.newInputStream(tempFile)) {
 					Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
 				}
@@ -331,13 +335,17 @@ class SimpleJdbcFileStoreTest {
 					}
 				}
 				final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-				try (final InputStream stored = store.get(fileName).getInputStream()) {
+				final DatabaseResource dr = store.get(fileName);
+				try (final InputStream stored = dr.getInputStream()) {
 					int bytesCount = 0;
 					while ((bytesCount = stored.read(buffer)) != -1) {
 						digestStored.update(buffer, 0, bytesCount);
 					}
 				}
-				Assertions.assertArrayEquals(digestSource.digest(), digestStored.digest());
+				final byte[] sha256Source = digestSource.digest();
+				final byte[] sha256Stored = digestStored.digest();
+				Assertions.assertArrayEquals(sha256Source, sha256Stored);
+				Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
 			}
 		}
 		finally {
@@ -406,6 +414,15 @@ class SimpleJdbcFileStoreTest {
 				file.toFile().deleteOnExit();
 			}
 		}
+	}
+
+	private static byte[] hexToBytes(final String hex) {
+		final int len = hex.length();
+		final byte[] data = new byte[len / 2];
+		for (int i = 0; i < len; i += 2) {
+			data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+		}
+		return data;
 	}
 
 }
