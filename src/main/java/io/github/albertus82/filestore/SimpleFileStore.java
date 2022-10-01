@@ -9,6 +9,8 @@ public interface SimpleFileStore {
 
 	List<Resource> list() throws IOException;
 
+	List<Resource> list(String filter) throws IOException;
+
 	Resource get(String fileName) throws IOException;
 
 	void store(Resource resource, String fileName) throws IOException;

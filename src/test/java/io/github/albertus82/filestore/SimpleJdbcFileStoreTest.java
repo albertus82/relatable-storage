@@ -124,6 +124,28 @@ class SimpleJdbcFileStoreTest {
 	}
 
 	@Test
+	void testListWithFilter() throws IOException {
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
+		Assertions.assertEquals(0, store.list().size());
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "foo.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "bar.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "test1.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "test2.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "tax%.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "taxi.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), ".txt");
+		Assertions.assertEquals(7, store.list().size());
+		Assertions.assertEquals(7, store.list("*").size());
+		Assertions.assertEquals(4, store.list("t*").size());
+		Assertions.assertEquals(2, store.list("te*").size());
+		Assertions.assertEquals(2, store.list("tes*").size());
+		Assertions.assertEquals(2, store.list("test*").size());
+		Assertions.assertEquals(1, store.list("tax%*").size());
+		Assertions.assertEquals(1, store.list("tax%.txt").size());
+		Assertions.assertEquals(2, store.list("tax*.txt").size());
+	}
+
+	@Test
 	void testRename() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
 		final Resource toSave1 = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));

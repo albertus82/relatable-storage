@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -38,6 +39,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private final Compression compression;
 	private final BlobExtractor blobExtractor;
 
+	private static final String ESC = "\\";
+
 	public SimpleJdbcFileStore(final DataSource dataSource, final String tableName, final Compression compression, final BlobExtractor blobExtractor) {
 		Objects.requireNonNull(dataSource, "dataSource must not be null");
 		Objects.requireNonNull(tableName, "tableName must not be null");
@@ -63,10 +66,22 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list() throws IOException {
-		final String sql = "SELECT filename, content_length, last_modified FROM " + sanitizeTableName(tableName);
-		log.fine(sql);
+		return list(null);
+	}
+
+	@Override
+	public List<Resource> list(final String filter) throws IOException {
+		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified FROM ").append(sanitizeTableName(tableName));
+		final List<Object> args = new ArrayList<>(2);
+		if (filter != null && !filter.isEmpty()) {
+			final String like = filter.replace(ESC, ESC + ESC).replace("%", ESC + "%").replace("_", ESC + "_").replace('*', '%').replace('?', '_');
+			sql.append(" WHERE filename LIKE ? ESCAPE ?");
+			args.add(like);
+			args.add(ESC);
+		}
+		log.log(Level.FINE, "{0}", sql);
 		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime()));
+			return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime()), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
