@@ -7,9 +7,7 @@ import org.springframework.core.io.Resource;
 
 public interface SimpleFileStore {
 
-	List<Resource> list() throws IOException;
-
-	List<Resource> list(String filter) throws IOException;
+	List<Resource> list(String... filters) throws IOException;
 
 	Resource get(String fileName) throws IOException;
 

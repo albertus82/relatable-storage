@@ -65,19 +65,24 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public List<Resource> list() throws IOException {
-		return list(null);
-	}
-
-	@Override
-	public List<Resource> list(final String filter) throws IOException {
+	public List<Resource> list(final String... filters) throws IOException {
 		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified FROM ").append(sanitizeTableName(tableName));
-		final List<Object> args = new ArrayList<>(2);
-		if (filter != null && !filter.isEmpty()) {
-			final String like = filter.replace(ESC, ESC + ESC).replace("%", ESC + "%").replace("_", ESC + "_").replace('*', '%').replace('?', '_');
-			sql.append(" WHERE filename LIKE ? ESCAPE ?");
-			args.add(like);
-			args.add(ESC);
+		final List<Object> args = new ArrayList<>();
+		if (filters != null && filters.length > 0) {
+			boolean first = true;
+			for (final String filter : filters) {
+				final String like = filter.replace(ESC, ESC + ESC).replace("%", ESC + "%").replace("_", ESC + "_").replace('*', '%').replace('?', '_');
+				if (first) {
+					sql.append(" WHERE ");
+					first = false;
+				}
+				else {
+					sql.append(" OR ");
+				}
+				sql.append("filename LIKE ? ESCAPE ?");
+				args.add(like);
+				args.add(ESC);
+			}
 		}
 		log.log(Level.FINE, "{0}", sql);
 		try {

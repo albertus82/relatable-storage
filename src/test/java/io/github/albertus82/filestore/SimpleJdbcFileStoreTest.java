@@ -124,7 +124,7 @@ class SimpleJdbcFileStoreTest {
 	}
 
 	@Test
-	void testListWithFilter() throws IOException {
+	void testListWithFilters() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate.getDataSource(), "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
 		Assertions.assertEquals(0, store.list().size());
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "foo.txt");
@@ -133,7 +133,7 @@ class SimpleJdbcFileStoreTest {
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "test2.txt");
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "tax%.txt");
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "taxi.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), ".txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "file.dat");
 		Assertions.assertEquals(7, store.list().size());
 		Assertions.assertEquals(7, store.list("*").size());
 		Assertions.assertEquals(4, store.list("t*").size());
@@ -143,6 +143,17 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertEquals(1, store.list("tax%*").size());
 		Assertions.assertEquals(1, store.list("tax%.txt").size());
 		Assertions.assertEquals(2, store.list("tax*.txt").size());
+		Assertions.assertEquals(2, store.list("tax?.txt").size());
+		Assertions.assertEquals(2, store.list("?ax*.txt").size());
+		Assertions.assertEquals(2, store.list("*ax*").size());
+		Assertions.assertEquals(1, store.list("foo.txt").size());
+		Assertions.assertEquals(2, store.list("foo.txt", "bar.txt").size());
+		Assertions.assertEquals(2, store.list("*oo.txt", "bar.txt").size());
+		Assertions.assertEquals(6, store.list("*.txt").size());
+		Assertions.assertEquals(2, store.list("*oo.txt", "bar.txt").size());
+		Assertions.assertEquals(6, store.list("*.txt", "bar.txt").size());
+		Assertions.assertEquals(1, store.list("*.d?t").size());
+
 	}
 
 	@Test
