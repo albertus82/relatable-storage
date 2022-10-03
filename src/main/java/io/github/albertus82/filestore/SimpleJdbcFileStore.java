@@ -23,14 +23,12 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterInputStream;
 
-import javax.sql.DataSource;
-
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.Resource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.StatementCallback;
 import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
@@ -44,17 +42,17 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
-	private final JdbcTemplate jdbcTemplate;
+	private final JdbcOperations jdbcOperations;
 	private final String tableName;
 	private final Compression compression;
 	private final BlobExtractor blobExtractor;
 
-	public SimpleJdbcFileStore(final DataSource dataSource, final String tableName, final Compression compression, final BlobExtractor blobExtractor) {
-		Objects.requireNonNull(dataSource, "dataSource must not be null");
+	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String tableName, final Compression compression, final BlobExtractor blobExtractor) {
+		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(tableName, "tableName must not be null");
 		Objects.requireNonNull(compression, "compression must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
+		this.jdbcOperations = jdbcOperations;
 		this.tableName = tableName;
 		this.compression = compression;
 		this.blobExtractor = blobExtractor;
@@ -94,7 +92,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 		log.log(Level.FINE, "{0}", sql);
 		try {
-			return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
+			return jdbcOperations.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -107,7 +105,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "SELECT content_length, last_modified, sha256_base64 FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
 		log.fine(sql);
 		try {
-			return jdbcTemplate.query(sql, rs -> {
+			return jdbcOperations.query(sql, rs -> {
 				if (rs.next()) {
 					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(3))));
 				}
@@ -133,7 +131,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET content_length = ?, sha256_base64 = ? WHERE filename = ?";
 		log.fine(sql);
 		try {
-			jdbcTemplate.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
+			jdbcOperations.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -145,7 +143,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "INSERT INTO " + sanitizeTableName(tableName) + " (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)";
 		log.fine(sql);
 		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis); final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
-			jdbcTemplate.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+			jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 				@Override
 				protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
 					ps.setString(1, fileName);
@@ -178,7 +176,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET filename = ? WHERE filename = ?";
 		log.fine(sql);
 		try {
-			if (jdbcTemplate.update(sql, newFileName, oldFileName) == 0) {
+			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
 				throw new NoSuchFileException(oldFileName);
 			}
 		}
@@ -196,7 +194,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = "DELETE FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
 		log.fine(sql);
 		try {
-			if (jdbcTemplate.update(sql, fileName) == 0) {
+			if (jdbcOperations.update(sql, fileName) == 0) {
 				throw new NoSuchFileException(fileName);
 			}
 		}
@@ -207,7 +205,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private String sanitizeTableName(final String tableName) throws IOException {
 		try {
-			return jdbcTemplate.execute(new StatementCallback<String>() {
+			return jdbcOperations.execute(new StatementCallback<String>() {
 				@Override
 				public String doInStatement(final Statement stmt) throws SQLException {
 					return stmt.enquoteIdentifier(tableName, false);
@@ -271,7 +269,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			try {
 				final String sql = "SELECT COUNT(*) FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
 				log.fine(sql);
-				return jdbcTemplate.queryForObject(sql, boolean.class, fileName);
+				return jdbcOperations.queryForObject(sql, boolean.class, fileName);
 			}
 			catch (final DataAccessException | IOException e) {
 				log.log(Level.FINE, e, () -> "Could not retrieve data for existence check of " + getDescription());
@@ -289,7 +287,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			final String sql = "SELECT compressed, file_contents FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
 			log.fine(sql);
 			try {
-				return jdbcTemplate.query(sql, rs -> {
+				return jdbcOperations.query(sql, rs -> {
 					if (rs.next()) {
 						final boolean compressed = rs.getBoolean(1);
 						final InputStream inputStream = blobExtractor.getInputStream(rs, 2);
