@@ -71,13 +71,13 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public List<Resource> list(final String... filters) throws IOException {
+	public List<Resource> list(final String... patterns) throws IOException {
 		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ").append(sanitizeTableName(tableName));
 		final List<Object> args = new ArrayList<>();
-		if (filters != null && filters.length > 0) {
+		if (patterns != null && patterns.length > 0) {
 			boolean first = true;
-			for (final String filter : filters) {
-				final String like = filter.replace(SQL_ESCAPE, SQL_ESCAPE + SQL_ESCAPE).replace("%", SQL_ESCAPE + "%").replace("_", SQL_ESCAPE + "_").replace('*', '%').replace('?', '_');
+			for (final String pattern : patterns) {
+				final String like = pattern.replace(SQL_ESCAPE, SQL_ESCAPE + SQL_ESCAPE).replace("%", SQL_ESCAPE + "%").replace("_", SQL_ESCAPE + "_").replace('*', '%').replace('?', '_');
 				if (first) {
 					sql.append(" WHERE ");
 					first = false;
