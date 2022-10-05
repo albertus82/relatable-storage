@@ -142,16 +142,18 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
 		final String sql = "INSERT INTO " + sanitizeTableName(tableName) + " (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)";
 		log.fine(sql);
-		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis); final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
-			jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
-				@Override
-				protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
-					ps.setString(1, fileName);
-					ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
-					ps.setBoolean(3, !Compression.NONE.equals(compression));
-					lobCreator.setBlobAsBinaryStream(ps, 4, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
-				}
-			});
+		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
+			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
+				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+					@Override
+					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
+						ps.setString(1, fileName);
+						ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
+						ps.setBoolean(3, !Compression.NONE.equals(compression));
+						lobCreator.setBlobAsBinaryStream(ps, 4, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+					}
+				});
+			}
 			if (contentLength != -1 && cis.getCount() != contentLength) {
 				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
 			}
