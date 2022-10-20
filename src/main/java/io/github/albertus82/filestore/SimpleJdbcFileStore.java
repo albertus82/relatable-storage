@@ -206,17 +206,21 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	private String sanitizeTableName(final String tableName) throws IOException {
-		try {
-			return jdbcOperations.execute(new StatementCallback<String>() {
-				@Override
-				public String doInStatement(final Statement stmt) throws SQLException {
-					return stmt.enquoteIdentifier(tableName, false);
-				}
-			});
+		final List<String> enquotedIdentifiers = new ArrayList<>();
+		for (final String identifier : tableName.split("\\.")) {
+			try {
+				enquotedIdentifiers.add(jdbcOperations.execute(new StatementCallback<String>() {
+					@Override
+					public String doInStatement(final Statement stmt) throws SQLException {
+						return stmt.enquoteIdentifier(identifier, true);
+					}
+				}));
+			}
+			catch (final DataAccessException e) {
+				throw new IOException(e);
+			}
 		}
-		catch (final DataAccessException e) {
-			throw new IOException(e);
-		}
+		return enquotedIdentifiers.stream().reduce((a, b) -> a + '.' + b).orElseThrow(() -> new IllegalArgumentException(tableName));
 	}
 
 	private static Timestamp determineLastModifiedTimestamp(final Resource resource) {
