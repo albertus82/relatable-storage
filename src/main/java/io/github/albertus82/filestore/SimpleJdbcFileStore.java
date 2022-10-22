@@ -43,23 +43,23 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
 	private final JdbcOperations jdbcOperations;
-	private final String tableName;
+	private final String table;
 	private final Compression compression;
 	private final BlobExtractor blobExtractor;
 
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String tableName, final Compression compression, final BlobExtractor blobExtractor) {
+	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final Compression compression, final BlobExtractor blobExtractor) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
-		Objects.requireNonNull(tableName, "tableName must not be null");
+		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(compression, "compression must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
 		this.jdbcOperations = jdbcOperations;
-		this.tableName = tableName;
+		this.table = table;
 		this.compression = compression;
 		this.blobExtractor = blobExtractor;
 	}
 
 	public String getTableName() {
-		return tableName;
+		return table;
 	}
 
 	public Compression getCompression() {
@@ -72,7 +72,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
-		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ").append(sanitizeTableName(tableName));
+		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ").append(sanitizeTableName(table));
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
 			boolean first = true;
@@ -102,7 +102,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public DatabaseResource get(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final String sql = "SELECT content_length, last_modified, sha256_base64 FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
+		final String sql = "SELECT content_length, last_modified, sha256_base64 FROM " + sanitizeTableName(table) + " WHERE filename = ?";
 		log.fine(sql);
 		try {
 			return jdbcOperations.query(sql, rs -> {
@@ -128,7 +128,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final InsertResult ir = insert(resource, fileName);
-		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET content_length = ?, sha256_base64 = ? WHERE filename = ?";
+		final String sql = "UPDATE " + sanitizeTableName(table) + " SET content_length = ?, sha256_base64 = ? WHERE filename = ?";
 		log.fine(sql);
 		try {
 			jdbcOperations.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
@@ -140,7 +140,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
-		final String sql = "INSERT INTO " + sanitizeTableName(tableName) + " (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)";
+		final String sql = "INSERT INTO " + sanitizeTableName(table) + " (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)";
 		log.fine(sql);
 		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
 			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
@@ -175,7 +175,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void rename(final String oldFileName, final String newFileName) throws IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
-		final String sql = "UPDATE " + sanitizeTableName(tableName) + " SET filename = ? WHERE filename = ?";
+		final String sql = "UPDATE " + sanitizeTableName(table) + " SET filename = ? WHERE filename = ?";
 		log.fine(sql);
 		try {
 			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
@@ -193,7 +193,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public void delete(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final String sql = "DELETE FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
+		final String sql = "DELETE FROM " + sanitizeTableName(table) + " WHERE filename = ?";
 		log.fine(sql);
 		try {
 			if (jdbcOperations.update(sql, fileName) == 0) {
@@ -273,7 +273,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public boolean exists() {
 			try {
-				final String sql = "SELECT COUNT(*) FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
+				final String sql = "SELECT COUNT(*) FROM " + sanitizeTableName(table) + " WHERE filename = ?";
 				log.fine(sql);
 				return jdbcOperations.queryForObject(sql, boolean.class, fileName);
 			}
@@ -290,7 +290,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 		@Override
 		public InputStream getInputStream() throws IOException {
-			final String sql = "SELECT compressed, file_contents FROM " + sanitizeTableName(tableName) + " WHERE filename = ?";
+			final String sql = "SELECT compressed, file_contents FROM " + sanitizeTableName(table) + " WHERE filename = ?";
 			log.fine(sql);
 			try {
 				return jdbcOperations.query(sql, rs -> {

@@ -49,7 +49,7 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 			}
 			return Files.newInputStream(bufferFile, StandardOpenOption.DELETE_ON_CLOSE);
 		}
-		catch (final IOException | RuntimeException e) {
+		catch (final Exception e) {
 			deleteIfExists(bufferFile);
 			throw e;
 		}
