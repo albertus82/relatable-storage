@@ -58,7 +58,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		this.blobExtractor = blobExtractor;
 	}
 
-	public String getTableName() {
+	public String getTable() {
 		return table;
 	}
 
