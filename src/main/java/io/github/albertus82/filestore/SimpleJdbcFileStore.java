@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.Deflater;
@@ -126,7 +127,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			}, fileName);
 		}
 		catch (final EmptyResultDataAccessException e) {
-			log.log(Level.FINE, e, () -> fileName);
+			logException(e, () -> fileName);
 			throw new NoSuchFileException(fileName);
 		}
 		catch (final DataAccessException e) {
@@ -173,7 +174,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
 		}
 		catch (final DuplicateKeyException e) {
-			log.log(Level.FINE, e, () -> fileName);
+			logException(e, () -> fileName);
 			throw new FileAlreadyExistsException(fileName);
 		}
 		catch (final DataAccessException e) {
@@ -242,7 +243,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		return sql;
 	}
 
-	private static Timestamp determineLastModifiedTimestamp(final Resource resource) {
+	private Timestamp determineLastModifiedTimestamp(final Resource resource) {
 		try {
 			final long lastModified = resource.lastModified();
 			if (lastModified > 0) {
@@ -250,13 +251,17 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			}
 		}
 		catch (final IOException e) {
-			log.log(Level.FINE, e, resource::toString);
+			logException(e, resource::toString);
 		}
 		return new Timestamp(System.currentTimeMillis());
 	}
 
 	protected void logStatement(final CharSequence sql) {
 		log.log(Level.FINE, "{0}", sql);
+	}
+
+	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
+		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
 	public class DatabaseResource extends AbstractResource { // NOSONAR Override the "equals" method in this class. Subclasses that add fields should override "equals" (java:S2160)
@@ -302,7 +307,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				return jdbcOperations.queryForObject(sql.toString(), boolean.class, fileName);
 			}
 			catch (final DataAccessException | IOException e) {
-				log.log(Level.FINE, e, () -> "Could not retrieve data for existence check of " + getDescription());
+				logException(e, () -> "Could not retrieve data for existence check of " + getDescription());
 				return false;
 			}
 		}
@@ -330,7 +335,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				}, fileName);
 			}
 			catch (final EmptyResultDataAccessException e) {
-				log.log(Level.FINE, e, () -> fileName);
+				logException(e, () -> fileName);
 				throw new NoSuchFileException(fileName);
 			}
 			catch (final DataAccessException e) {
