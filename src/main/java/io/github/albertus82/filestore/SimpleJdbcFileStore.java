@@ -82,28 +82,29 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
-		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ");
-		appendSchemaAndTableName(sql);
+		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ");
+		appendSchemaAndTableName(sb);
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
 			boolean first = true;
 			for (final String pattern : patterns) {
 				final String like = pattern.replace(SQL_ESCAPE, SQL_ESCAPE + SQL_ESCAPE).replace("%", SQL_ESCAPE + "%").replace("_", SQL_ESCAPE + "_").replace('*', '%').replace('?', '_');
 				if (first) {
-					sql.append(" WHERE ");
+					sb.append(" WHERE ");
 					first = false;
 				}
 				else {
-					sql.append(" OR ");
+					sb.append(" OR ");
 				}
-				sql.append("filename LIKE ? ESCAPE ?");
+				sb.append("filename LIKE ? ESCAPE ?");
 				args.add(like);
 				args.add(SQL_ESCAPE);
 			}
 		}
+		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			return jdbcOperations.query(sql.toString(), (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
+			return jdbcOperations.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -113,11 +114,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public DatabaseResource get(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final StringBuilder sql = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
-		appendSchemaAndTableName(sql).append(" WHERE filename = ?");
+		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
+		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			return jdbcOperations.query(sql.toString(), rs -> {
+			return jdbcOperations.query(sql, rs -> {
 				if (rs.next()) {
 					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(3))));
 				}
@@ -140,11 +142,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final InsertResult ir = insert(resource, fileName);
-		final StringBuilder sql = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sql).append(" SET content_length = ?, sha256_base64 = ? WHERE filename = ?");
+		final StringBuilder sb = new StringBuilder("UPDATE ");
+		appendSchemaAndTableName(sb).append(" SET content_length = ?, sha256_base64 = ? WHERE filename = ?");
+		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			jdbcOperations.update(sql.toString(), ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
+			jdbcOperations.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -153,12 +156,13 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
-		final StringBuilder sql = new StringBuilder("INSERT INTO ");
-		appendSchemaAndTableName(sql).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+		final StringBuilder sb = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(sb).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+		final String sql = sb.toString();
 		logStatement(sql);
 		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
 			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
-				jdbcOperations.execute(sql.toString(), new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 					@Override
 					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
 						ps.setString(1, fileName);
@@ -189,11 +193,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void rename(final String oldFileName, final String newFileName) throws IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
-		final StringBuilder sql = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sql).append(" SET filename = ? WHERE filename = ?");
+		final StringBuilder sb = new StringBuilder("UPDATE ");
+		appendSchemaAndTableName(sb).append(" SET filename = ? WHERE filename = ?");
+		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			if (jdbcOperations.update(sql.toString(), newFileName, oldFileName) == 0) {
+			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
 				throw new NoSuchFileException(oldFileName);
 			}
 		}
@@ -208,11 +213,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public void delete(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final StringBuilder sql = new StringBuilder("DELETE FROM ");
-		appendSchemaAndTableName(sql).append(" WHERE filename = ?");
+		final StringBuilder sb = new StringBuilder("DELETE FROM ");
+		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			if (jdbcOperations.update(sql.toString(), fileName) == 0) {
+			if (jdbcOperations.update(sql, fileName) == 0) {
 				throw new NoSuchFileException(fileName);
 			}
 		}
@@ -256,7 +262,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		return new Timestamp(System.currentTimeMillis());
 	}
 
-	protected void logStatement(final CharSequence sql) {
+	protected void logStatement(final String sql) {
 		log.log(Level.FINE, "{0}", sql);
 	}
 
@@ -301,10 +307,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public boolean exists() {
 			try {
-				final StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ");
-				appendSchemaAndTableName(sql).append(" WHERE filename = ?");
+				final StringBuilder sb = new StringBuilder("SELECT COUNT(*) FROM ");
+				appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+				final String sql = sb.toString();
 				logStatement(sql);
-				return jdbcOperations.queryForObject(sql.toString(), boolean.class, fileName);
+				return jdbcOperations.queryForObject(sql, boolean.class, fileName);
 			}
 			catch (final DataAccessException | IOException e) {
 				logException(e, () -> "Could not retrieve data for existence check of " + getDescription());
@@ -319,11 +326,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 		@Override
 		public InputStream getInputStream() throws IOException {
-			final StringBuilder sql = new StringBuilder("SELECT compressed, file_contents FROM ");
-			appendSchemaAndTableName(sql).append(" WHERE filename = ?");
+			final StringBuilder sb = new StringBuilder("SELECT compressed, file_contents FROM ");
+			appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+			final String sql = sb.toString();
 			logStatement(sql);
 			try {
-				return jdbcOperations.query(sql.toString(), rs -> {
+				return jdbcOperations.query(sql, rs -> {
 					if (rs.next()) {
 						final boolean compressed = rs.getBoolean(1);
 						final InputStream inputStream = blobExtractor.getInputStream(rs, 2);
