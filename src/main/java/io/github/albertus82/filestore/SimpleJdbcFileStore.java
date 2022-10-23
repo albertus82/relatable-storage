@@ -193,10 +193,13 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	protected void logStatement(final String sql) {
+		Objects.requireNonNull(sql);
 		log.log(Level.FINE, "{0}", sql);
 	}
 
 	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
+		Objects.requireNonNull(thrown);
+		Objects.requireNonNull(msgSupplier);
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
