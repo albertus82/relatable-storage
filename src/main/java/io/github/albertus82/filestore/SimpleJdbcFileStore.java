@@ -154,41 +154,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
-	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
-		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
-		final StringBuilder sb = new StringBuilder("INSERT INTO ");
-		appendSchemaAndTableName(sb).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
-		final String sql = sb.toString();
-		logStatement(sql);
-		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
-			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
-				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
-					@Override
-					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
-						ps.setString(1, fileName);
-						ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
-						ps.setBoolean(3, !Compression.NONE.equals(compression));
-						lobCreator.setBlobAsBinaryStream(ps, 4, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
-					}
-				});
-			}
-			if (contentLength != -1 && cis.getCount() != contentLength) {
-				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
-			}
-			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
-		}
-		catch (final DuplicateKeyException e) {
-			logException(e, () -> fileName);
-			throw new FileAlreadyExistsException(fileName);
-		}
-		catch (final DataAccessException e) {
-			throw new IOException(e);
-		}
-		catch (final NoSuchAlgorithmException e) {
-			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
-		}
-	}
-
 	@Override
 	public void rename(final String oldFileName, final String newFileName) throws IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
@@ -227,6 +192,49 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
+	protected void logStatement(final String sql) {
+		log.log(Level.FINE, "{0}", sql);
+	}
+
+	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
+		log.log(Level.FINE, thrown, msgSupplier);
+	}
+
+	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
+		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
+		final StringBuilder sb = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(sb).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+		final String sql = sb.toString();
+		logStatement(sql);
+		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
+			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
+				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+					@Override
+					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
+						ps.setString(1, fileName);
+						ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
+						ps.setBoolean(3, !Compression.NONE.equals(compression));
+						lobCreator.setBlobAsBinaryStream(ps, 4, is, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+					}
+				});
+			}
+			if (contentLength != -1 && cis.getCount() != contentLength) {
+				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
+			}
+			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
+		}
+		catch (final DuplicateKeyException e) {
+			logException(e, () -> fileName);
+			throw new FileAlreadyExistsException(fileName);
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
+		}
+		catch (final NoSuchAlgorithmException e) {
+			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
+		}
+	}
+
 	private String sanitizeIdentifier(final String identifier) throws IOException {
 		try {
 			return jdbcOperations.execute(new StatementCallback<String>() {
@@ -260,14 +268,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			logException(e, resource::toString);
 		}
 		return new Timestamp(System.currentTimeMillis());
-	}
-
-	protected void logStatement(final String sql) {
-		log.log(Level.FINE, "{0}", sql);
-	}
-
-	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
-		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
 	public class DatabaseResource extends AbstractResource { // NOSONAR Override the "equals" method in this class. Subclasses that add fields should override "equals" (java:S2160)
