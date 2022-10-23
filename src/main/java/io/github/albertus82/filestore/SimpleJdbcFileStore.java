@@ -35,6 +35,7 @@ import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatemen
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
+@SuppressWarnings("java:S1130") // Remove the declaration of thrown exception 'java.nio.file.NoSuchFileException' which is a subclass of 'java.io.IOException'. "throws" declarations should not be superfluous (java:S1130)
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
@@ -112,7 +113,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public DatabaseResource get(final String fileName) throws IOException {
+	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
@@ -138,7 +139,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public void store(final Resource resource, final String fileName) throws IOException {
+	public void store(final Resource resource, final String fileName) throws FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final InsertResult ir = insert(resource, fileName);
@@ -155,7 +156,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public void rename(final String oldFileName, final String newFileName) throws IOException {
+	public void rename(final String oldFileName, final String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
 		final StringBuilder sb = new StringBuilder("UPDATE ");
@@ -176,7 +177,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public void delete(final String fileName) throws IOException {
+	public void delete(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sb = new StringBuilder("DELETE FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
