@@ -82,10 +82,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
 		final StringBuilder sql = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table));
+		appendSchemaAndTableName(sql);
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
 			boolean first = true;
@@ -116,10 +113,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public DatabaseResource get(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sql = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table)).append(" WHERE filename = ?");
+		appendSchemaAndTableName(sql).append(" WHERE filename = ?");
 		log.log(Level.FINE, "{0}", sql);
 		try {
 			return jdbcOperations.query(sql.toString(), rs -> {
@@ -146,10 +140,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final InsertResult ir = insert(resource, fileName);
 		final StringBuilder sql = new StringBuilder("UPDATE ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table)).append(" SET content_length = ?, sha256_base64 = ? WHERE filename = ?");
+		appendSchemaAndTableName(sql).append(" SET content_length = ?, sha256_base64 = ? WHERE filename = ?");
 		log.log(Level.FINE, "{0}", sql);
 		try {
 			jdbcOperations.update(sql.toString(), ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
@@ -162,10 +153,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
 		final StringBuilder sql = new StringBuilder("INSERT INTO ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table)).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+		appendSchemaAndTableName(sql).append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
 		log.log(Level.FINE, "{0}", sql);
 		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
 			try (final InputStream is = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
@@ -201,10 +189,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
 		final StringBuilder sql = new StringBuilder("UPDATE ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table)).append(" SET filename = ? WHERE filename = ?");
+		appendSchemaAndTableName(sql).append(" SET filename = ? WHERE filename = ?");
 		log.log(Level.FINE, "{0}", sql);
 		try {
 			if (jdbcOperations.update(sql.toString(), newFileName, oldFileName) == 0) {
@@ -223,10 +208,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void delete(final String fileName) throws IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sql = new StringBuilder("DELETE FROM ");
-		if (schema != null && !schema.isBlank()) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table)).append(" WHERE filename = ?");
+		appendSchemaAndTableName(sql).append(" WHERE filename = ?");
 		log.log(Level.FINE, "{0}", sql);
 		try {
 			if (jdbcOperations.update(sql.toString(), fileName) == 0) {
@@ -250,6 +232,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
+	}
+
+	private <T extends Appendable> T appendSchemaAndTableName(final T sql) throws IOException {
+		if (schema != null && !schema.isBlank()) {
+			sql.append(sanitizeIdentifier(schema)).append('.');
+		}
+		sql.append(sanitizeIdentifier(table));
+		return sql;
 	}
 
 	private static Timestamp determineLastModifiedTimestamp(final Resource resource) {
@@ -303,10 +293,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		public boolean exists() {
 			try {
 				final StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ");
-				if (schema != null && !schema.isBlank()) {
-					sql.append(sanitizeIdentifier(schema)).append('.');
-				}
-				sql.append(sanitizeIdentifier(table)).append(" WHERE filename = ?");
+				appendSchemaAndTableName(sql).append(" WHERE filename = ?");
 				log.log(Level.FINE, "{0}", sql);
 				return jdbcOperations.queryForObject(sql.toString(), boolean.class, fileName);
 			}
@@ -324,10 +311,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public InputStream getInputStream() throws IOException {
 			final StringBuilder sql = new StringBuilder("SELECT compressed, file_contents FROM ");
-			if (schema != null && !schema.isBlank()) {
-				sql.append(sanitizeIdentifier(schema)).append('.');
-			}
-			sql.append(sanitizeIdentifier(table)).append(" WHERE filename = ?");
+			appendSchemaAndTableName(sql).append(" WHERE filename = ?");
 			log.log(Level.FINE, "{0}", sql);
 			try {
 				return jdbcOperations.query(sql.toString(), rs -> {
