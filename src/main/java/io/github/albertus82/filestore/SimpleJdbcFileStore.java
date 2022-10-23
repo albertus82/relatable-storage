@@ -116,7 +116,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
-		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
@@ -144,7 +144,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final InsertResult ir = insert(resource, fileName);
 		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET content_length = ?, sha256_base64 = ? WHERE filename = ?");
+		appendSchemaAndTableName(sb).append(" SET content_length=?, sha256_base64=? WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
@@ -160,7 +160,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
 		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET filename = ? WHERE filename = ?");
+		appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
@@ -180,7 +180,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void delete(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
 		final StringBuilder sb = new StringBuilder("DELETE FROM ");
-		appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
@@ -312,7 +312,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		public boolean exists() {
 			try {
 				final StringBuilder sb = new StringBuilder("SELECT COUNT(*) FROM ");
-				appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+				appendSchemaAndTableName(sb).append(" WHERE filename=?");
 				final String sql = sb.toString();
 				logStatement(sql);
 				return jdbcOperations.queryForObject(sql, boolean.class, fileName);
@@ -331,7 +331,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public InputStream getInputStream() throws IOException {
 			final StringBuilder sb = new StringBuilder("SELECT compressed, file_contents FROM ");
-			appendSchemaAndTableName(sb).append(" WHERE filename = ?");
+			appendSchemaAndTableName(sb).append(" WHERE filename=?");
 			final String sql = sb.toString();
 			logStatement(sql);
 			try {
