@@ -25,7 +25,7 @@ import java.util.Objects;
  * @author Chris Nokleberg -- Modified by <a href="https://github.com/albertus82">albertus82</a> to make this class self-contained
  * @since 1.0
  */
-public final class CountingInputStream extends FilterInputStream {
+/* public */ final class CountingInputStream extends FilterInputStream {
 
   private long count;
   private long mark = -1;
@@ -35,12 +35,12 @@ public final class CountingInputStream extends FilterInputStream {
    *
    * @param in the input stream to be wrapped
    */
-  public CountingInputStream(InputStream in) {
+  /* public */ CountingInputStream(InputStream in) {
     super(Objects.requireNonNull(in));
   }
 
   /** Returns the number of bytes read. */
-  public long getCount() {
+  /* public */ long getCount() {
     return count;
   }
 
