@@ -35,6 +35,7 @@ import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatemen
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
+/** Basic DBMS-based implementation of a filestore. */
 @SuppressWarnings("java:S1130") // Remove the declaration of thrown exception 'java.nio.file.NoSuchFileException' which is a subclass of 'java.io.IOException'. "throws" declarations should not be superfluous (java:S1130)
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
@@ -50,10 +51,27 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private final Compression compression;
 	private final BlobExtractor blobExtractor;
 
+	/**
+	 * Creates a new instance based on a database table in the default schema.
+	 *
+	 * @param jdbcOperations the JDBC executor
+	 * @param table the SQL table name
+	 * @param compression the data compression level
+	 * @param blobExtractor the BLOB extraction strategy
+	 */
 	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final Compression compression, final BlobExtractor blobExtractor) {
 		this(jdbcOperations, null, table, compression, blobExtractor);
 	}
 
+	/**
+	 * Creates a new instance based on a database table in the specified schema.
+	 *
+	 * @param jdbcOperations the JDBC executor
+	 * @param schema the database schema name
+	 * @param table the database table name
+	 * @param compression the data compression level
+	 * @param blobExtractor the BLOB extraction strategy
+	 */
 	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String schema, final String table, final Compression compression, final BlobExtractor blobExtractor) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
@@ -193,11 +211,22 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
+	/**
+	 * Logs the execution of a SQL statement.
+	 *
+	 * @param sql the statement to log
+	 */
 	protected void logStatement(final String sql) {
 		Objects.requireNonNull(sql);
 		log.log(Level.FINE, "{0}", sql);
 	}
 
+	/**
+	 * Logs non-fatal exceptions that might be useful for debug.
+	 *
+	 * @param thrown the exception to log
+	 * @param msgSupplier a supplier returning the log message
+	 */
 	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
 		Objects.requireNonNull(thrown);
 		Objects.requireNonNull(msgSupplier);

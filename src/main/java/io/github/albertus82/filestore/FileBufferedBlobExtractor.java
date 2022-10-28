@@ -15,36 +15,51 @@ import java.util.logging.Logger;
 
 import org.springframework.jdbc.LobRetrievalFailureException;
 
+/**
+ * BLOB extraction strategy that buffers the entire BLOB content on a temporary
+ * file on the file system.
+ */
 public class FileBufferedBlobExtractor implements BlobExtractor {
 
 	private static final Logger log = Logger.getLogger(FileBufferedBlobExtractor.class.getName());
 
 	private final Path bufferDirectory;
 
+	/**
+	 * Creates a new instance of this strategy that stores temporary files in the
+	 * directory specified.
+	 *
+	 * @param bufferDirectory the directory in which temporary files will be stored
+	 */
 	public FileBufferedBlobExtractor(final Path bufferDirectory) {
 		Objects.requireNonNull(bufferDirectory);
 		this.bufferDirectory = bufferDirectory;
 	}
 
+	/**
+	 * Creates a new instance of this strategy that stores temporary files in a
+	 * directory whose name corresponds to the value of the {@code java.io.tmpdir}
+	 * system property (usually it's the default system temp dir).
+	 */
 	public FileBufferedBlobExtractor() {
 		this(Path.of(System.getProperty("java.io.tmpdir")));
 	}
 
 	@Override
-	public InputStream getInputStream(final ResultSet rs, final int blobColumnIndex) throws SQLException {
+	public InputStream getInputStream(final ResultSet resultSet, final int blobColumnIndex) throws SQLException {
 		try {
 			final Path bufferFile = Files.createTempFile(Files.createDirectories(bufferDirectory), null, null);
-			return getInputStream(rs, blobColumnIndex, bufferFile);
+			return getInputStream(resultSet, blobColumnIndex, bufferFile);
 		}
 		catch (final IOException e) {
 			throw new LobRetrievalFailureException("Error while reading compressed data", e);
 		}
 	}
 
-	private static InputStream getInputStream(final ResultSet rs, final int blobColumnIndex, final Path bufferFile) throws SQLException, IOException {
+	private static InputStream getInputStream(final ResultSet resultSet, final int blobColumnIndex, final Path bufferFile) throws SQLException, IOException {
 		try {
 			setPosixFilePermissions(bufferFile, "rw-------");
-			try (final InputStream in = rs.getBinaryStream(blobColumnIndex); final OutputStream out = Files.newOutputStream(bufferFile)) {
+			try (final InputStream in = resultSet.getBinaryStream(blobColumnIndex); final OutputStream out = Files.newOutputStream(bufferFile)) {
 				in.transferTo(out);
 			}
 			return Files.newInputStream(bufferFile, StandardOpenOption.DELETE_ON_CLOSE);
