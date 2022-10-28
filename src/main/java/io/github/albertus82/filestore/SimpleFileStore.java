@@ -41,7 +41,7 @@ public interface SimpleFileStore {
 	 *
 	 * @param resource the data source of the file
 	 * @param fileName the name of the file to create
-	 
+	 *
 	 * @throws FileAlreadyExistsException if a file with the same {@code fileName}
 	 *         already exists
 	 * @throws IOException if an I/O error occurs
