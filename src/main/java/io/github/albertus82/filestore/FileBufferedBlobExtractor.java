@@ -27,7 +27,7 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 
 	/**
 	 * Creates a new instance of this strategy that stores temporary files in the
-	 * directory specified.
+	 * specified directory.
 	 *
 	 * @param bufferDirectory the directory in which temporary files will be stored
 	 */
