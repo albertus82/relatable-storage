@@ -15,7 +15,7 @@ public interface BlobExtractor {
 	 *
 	 * @return an {@link InputStream} to read the file content.
 	 *
-	 * @throws SQLException
+	 * @throws SQLException if a database access error occurs
 	 */
 	InputStream getInputStream(ResultSet resultSet, int blobColumnIndex) throws SQLException;
 
