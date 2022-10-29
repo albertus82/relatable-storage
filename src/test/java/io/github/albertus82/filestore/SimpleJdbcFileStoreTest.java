@@ -96,7 +96,9 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, "STORAGE", null, null));
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, Compression.MEDIUM, null));
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, null, fbbe));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, " ", Compression.NONE, fbbe));
 		Assertions.assertThrows(NullPointerException.class, () -> new FileBufferedBlobExtractor(null));
+		Assertions.assertDoesNotThrow(() -> new SimpleJdbcFileStore(jdbcTemplate, "SCHEMA", "TABLE", Compression.LOW, fbbe));
 
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, fbbe);
 		Assertions.assertDoesNotThrow(() -> store.list());
