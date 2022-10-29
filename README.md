@@ -3,7 +3,7 @@ Simple JDBC Filestore
 [![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
 
-Basic DBMS-based filestore
+Basic RDBMS-based filestore
 
 ```sql
 CREATE TABLE storage (
