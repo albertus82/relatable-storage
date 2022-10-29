@@ -36,7 +36,7 @@ import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
 /** Basic RDBMS-based implementation of a filestore. */
-@SuppressWarnings("java:S1130") // Remove the declaration of thrown exception 'java.nio.file.NoSuchFileException' which is a subclass of 'java.io.IOException'. "throws" declarations should not be superfluous (java:S1130)
+@SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);

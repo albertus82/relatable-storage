@@ -8,7 +8,7 @@ import java.util.List;
 import org.springframework.core.io.Resource;
 
 /** Basic interface for filestore operations. */
-@SuppressWarnings("java:S1130") // Remove the declaration of thrown exception 'java.nio.file.NoSuchFileException' which is a subclass of 'java.io.IOException'. "throws" declarations should not be superfluous (java:S1130)
+@SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public interface SimpleFileStore {
 
 	/**
