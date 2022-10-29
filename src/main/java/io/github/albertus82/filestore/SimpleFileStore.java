@@ -25,7 +25,7 @@ public interface SimpleFileStore {
 	List<Resource> list(String... patterns) throws IOException;
 
 	/**
-	 * Gets a reference to a file in the store.
+	 * Gets a reference to the specified file in the store.
 	 *
 	 * @param fileName the name of the desired file (unique key)
 	 *
