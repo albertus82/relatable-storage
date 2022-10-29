@@ -87,14 +87,29 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		this.blobExtractor = blobExtractor;
 	}
 
+	/**
+	 * Returns the schema name, or null if no schema name was specified.
+	 * 
+	 * @return the schema name, can be null.
+	 */
 	public String getSchema() {
 		return schema;
 	}
 
+	/**
+	 * Returns the table name.
+	 * 
+	 * @return the table name
+	 */
 	public String getTable() {
 		return table;
 	}
 
+	/**
+	 * Returns the compression level.
+	 * 
+	 * @return the compression level
+	 */
 	public Compression getCompression() {
 		return compression;
 	}

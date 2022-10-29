@@ -15,7 +15,7 @@ public interface SimpleFileStore {
 	 * Gets a list of references to files in the store.
 	 *
 	 * @param patterns one or more filter patterns that may also include {@code *}
-	 *        and {@code ?} wildcards (optional).
+	 *        and {@code ?} wildcards (optional)
 	 *
 	 * @return a list of objects referencing the files matching the provided pattern
 	 *         (all files if no pattern is provided)

@@ -13,7 +13,7 @@ public interface BlobExtractor {
 	 * @param resultSet the SQL result set
 	 * @param blobColumnIndex the index of the BLOB column
 	 *
-	 * @return an {@link InputStream} to read the file content.
+	 * @return an {@link InputStream} to read the file content
 	 *
 	 * @throws SQLException if a database access error occurs
 	 */
