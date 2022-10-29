@@ -35,7 +35,7 @@ import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatemen
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
-/** Basic DBMS-based implementation of a filestore. */
+/** Basic RDBMS-based implementation of a filestore. */
 @SuppressWarnings("java:S1130") // Remove the declaration of thrown exception 'java.nio.file.NoSuchFileException' which is a subclass of 'java.io.IOException'. "throws" declarations should not be superfluous (java:S1130)
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
@@ -89,7 +89,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	/**
 	 * Returns the schema name, or null if no schema name was specified.
-	 * 
+	 *
 	 * @return the schema name, can be null.
 	 */
 	public String getSchema() {
@@ -98,7 +98,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	/**
 	 * Returns the table name.
-	 * 
+	 *
 	 * @return the table name
 	 */
 	public String getTable() {
@@ -107,7 +107,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	/**
 	 * Returns the compression level.
-	 * 
+	 *
 	 * @return the compression level
 	 */
 	public Compression getCompression() {
@@ -227,7 +227,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	/**
-	 * Logs the execution of a SQL statement.
+	 * Logs the execution of a SQL statement. Can be overridden to customize logging
+	 * logic.
 	 *
 	 * @param sql the statement to log
 	 */
@@ -237,7 +238,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	/**
-	 * Logs non-fatal exceptions that might be useful for debug.
+	 * Logs non-fatal exceptions that might be useful for debug. Can be overridden
+	 * to customize logging logic.
 	 *
 	 * @param thrown the exception to log
 	 * @param msgSupplier a supplier returning the log message
@@ -318,6 +320,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		return new Timestamp(System.currentTimeMillis());
 	}
 
+	/** {@link Resource} implementation with a RDBMS table target. */
 	public class DatabaseResource extends AbstractResource { // NOSONAR Override the "equals" method in this class. Subclasses that add fields should override "equals" (java:S2160)
 
 		private final String fileName;
@@ -333,25 +336,34 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			this.sha256Hex = sha256Hex;
 		}
 
+		/** Returns the file name. */
 		@Override
 		public String getFilename() {
 			return fileName;
 		}
 
+		/** Returns the (uncompressed) file size. */
 		@Override
 		public long contentLength() {
 			return contentLength;
 		}
 
+		/** Returns the time that the file was last modified. */
 		@Override
 		public long lastModified() {
 			return lastModified;
 		}
 
+		/**
+		 * Returns the SHA-256 checksum of the content, in hexadecimal format.
+		 * 
+		 * @return the SHA-256 checksum of the content, in hexadecimal format.
+		 */
 		public String getSha256Hex() {
 			return sha256Hex;
 		}
 
+		/** Checks if the resource exists in the database. */
 		@Override
 		public boolean exists() {
 			try {
@@ -367,11 +379,22 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			}
 		}
 
+		/**
+		 * Returns a description for this resource, to be used for error output when
+		 * working with the resource.
+		 */
 		@Override
 		public String getDescription() {
 			return "Database resource [" + fileName + "]";
 		}
 
+		/**
+		 * Returns an {@link InputStream} for the content, applying the
+		 * {@link BlobExtractor} strategy specified specified in the constructor of
+		 * {@link SimpleJdbcFileStore}.
+		 * 
+		 * @return an {@link InputStream} to read the file content
+		 */
 		@Override
 		public InputStream getInputStream() throws IOException {
 			final StringBuilder sb = new StringBuilder("SELECT compressed, file_contents FROM ");
@@ -436,7 +459,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return contentLength;
 		}
 
-		public byte[] getSha256Digest() {
+		private byte[] getSha256Digest() {
 			return sha256Digest;
 		}
 	}
