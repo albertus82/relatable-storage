@@ -356,7 +356,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 		/**
 		 * Returns the SHA-256 checksum of the content, in hexadecimal format.
-		 * 
+		 *
 		 * @return the SHA-256 checksum of the content, in hexadecimal format.
 		 */
 		public String getSha256Hex() {
@@ -392,7 +392,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		 * Returns an {@link InputStream} for the content, applying the
 		 * {@link BlobExtractor} strategy specified specified in the constructor of
 		 * {@link SimpleJdbcFileStore}.
-		 * 
+		 *
 		 * @return an {@link InputStream} to read the file content
 		 */
 		@Override
