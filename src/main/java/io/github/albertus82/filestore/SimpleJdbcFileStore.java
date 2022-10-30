@@ -480,6 +480,9 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						final InputStream plainTextInputStream = blobExtractor.getInputStream(rs, 3);
 						final InputStream inputStream;
 						if (ivSaltBase64 != null) {
+							if (password == null) {
+								throw new UnsupportedOperationException("Cannot decrypt data without password");
+							}
 							final byte[] ivSalt = Base64.getDecoder().decode(ivSaltBase64);
 							final Cipher cipher = createDecryptionCipher(password, Arrays.copyOf(ivSalt, INITIALIZATION_VECTOR_LENGTH), Arrays.copyOfRange(ivSalt, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SALT_LENGTH));
 							inputStream = new CipherInputStream(plainTextInputStream, cipher);
