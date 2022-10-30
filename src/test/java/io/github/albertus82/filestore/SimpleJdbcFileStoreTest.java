@@ -211,6 +211,42 @@ class SimpleJdbcFileStoreTest {
 	}
 
 	@Test
+	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
+			for (final Compression compression : Compression.values()) {
+				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, be, "TestPassword0$".toCharArray());
+				try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+					store.store(new InputStreamResource(is), "myfile.txt");
+				}
+				final long timeAfter = System.currentTimeMillis();
+				final List<Resource> list = store.list();
+				Assertions.assertEquals(1, list.size());
+				final Resource r1 = list.get(0);
+				Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
+				Assertions.assertTrue(r1.exists());
+				try (final InputStream is = r1.getInputStream()) {
+					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+					Assertions.assertEquals("myfile.txt", r1.getFilename());
+					Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
+				}
+				final Resource r2 = store.get(r1.getFilename());
+				Assertions.assertEquals(r1.contentLength(), r2.contentLength());
+				Assertions.assertTrue(r2.exists());
+				try (final InputStream is = r2.getInputStream()) {
+					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+					Assertions.assertEquals(r1.getFilename(), r2.getFilename());
+					Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+				}
+				store.delete("myfile.txt");
+				Assertions.assertFalse(r2.exists());
+				Assertions.assertThrows(NoSuchFileException.class, () -> r2.getInputStream());
+				Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
+				Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
+			}
+		}
+	}
+
+	@Test
 	void testStoreListGetDeleteFromFile() throws IOException {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
