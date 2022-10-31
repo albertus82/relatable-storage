@@ -1,5 +1,6 @@
 package io.github.albertus82.filestore;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -297,7 +298,7 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	void testStore() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
-		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+		try (final InputStream is = new ByteArrayInputStream(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))) {
 			Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
 		Assertions.assertEquals(1, store.list().size());
