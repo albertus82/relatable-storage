@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -71,92 +72,88 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private final char[] password;
 
 	/**
-	 * Creates a new instance based on a database table in the specified schema,
-	 * with encryption.
-	 * 
+	 * Creates a new instance based on a database table.
+	 *
 	 * @param jdbcOperations the JDBC executor
-	 * @param schema the database schema name
 	 * @param table the database table name
-	 * @param compression the data compression level
 	 * @param blobExtractor the BLOB extraction strategy
-	 * @param password the encryption/decryption password
 	 */
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String schema, final String table, final Compression compression, final BlobExtractor blobExtractor, final char[] password) {
+	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
+		this(jdbcOperations, null, table, Compression.NONE, blobExtractor, null);
+	}
+
+	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String schema, final String table, final Compression compression, final BlobExtractor blobExtractor, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
-		Objects.requireNonNull(compression, "compression must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
 		if (table.isBlank()) {
 			throw new IllegalArgumentException("table must not be blank");
-		}
-		if (schema != null && schema.isBlank()) {
-			throw new IllegalArgumentException("schema must not be blank");
-		}
-		if (password != null && password.length == 0) {
-			throw new IllegalArgumentException("password must not be empty");
 		}
 		this.jdbcOperations = jdbcOperations;
 		this.schema = schema;
 		this.table = table;
 		this.compression = compression;
 		this.blobExtractor = blobExtractor;
-		this.password = password != null ? password.clone() : null;
+		this.password = password;
 	}
 
 	/**
-	 * Creates a new instance based on a database table in the default schema, with
-	 * encryption.
-	 * 
-	 * @param jdbcOperations the JDBC executor
-	 * @param table the SQL table name
-	 * @param compression the data compression level
-	 * @param blobExtractor the BLOB extraction strategy
-	 * @param password the encryption/decryption password
-	 */
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final Compression compression, final BlobExtractor blobExtractor, final char[] password) {
-		this(jdbcOperations, null, table, compression, blobExtractor, password);
-	}
-
-	/**
-	 * Creates a new instance based on a database table in the default schema,
-	 * without encryption.
+	 * Set a custom database schema name.
 	 *
-	 * @param jdbcOperations the JDBC executor
-	 * @param table the SQL table name
-	 * @param compression the data compression level
-	 * @param blobExtractor the BLOB extraction strategy
-	 */
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final Compression compression, final BlobExtractor blobExtractor) {
-		this(jdbcOperations, null, table, compression, blobExtractor, null);
-	}
-
-	/**
-	 * Creates a new instance based on a database table in the specified schema,
-	 * without encryption.
-	 *
-	 * @param jdbcOperations the JDBC executor
 	 * @param schema the database schema name
-	 * @param table the database table name
+	 *
+	 * @return a new instance configured with the provided schema name.
+	 */
+	public SimpleJdbcFileStore withSchema(final String schema) {
+		Objects.requireNonNull(schema, "schema must not be null");
+		if (schema.isBlank()) {
+			throw new IllegalArgumentException("schema must not be blank");
+		}
+		return new SimpleJdbcFileStore(this.jdbcOperations, schema, this.table, this.compression, this.blobExtractor, this.password);
+	}
+
+	/**
+	 * Enable data compression.
+	 *
 	 * @param compression the data compression level
-	 * @param blobExtractor the BLOB extraction strategy
+	 *
+	 * @return a new instance configured with the provided compression level.
 	 */
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String schema, final String table, final Compression compression, final BlobExtractor blobExtractor) {
-		this(jdbcOperations, schema, table, compression, blobExtractor, null);
+	public SimpleJdbcFileStore withCompression(final Compression compression) {
+		Objects.requireNonNull(compression, "compression must not be null");
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.schema, this.table, compression, this.blobExtractor, this.password);
 	}
 
 	/**
-	 * Returns the schema name, or null if no schema name was specified.
+	 * Enable data encryption (and decryption).
 	 *
-	 * @return the schema name, can be null.
+	 * @param password the password used for encryption and decryption
+	 *
+	 * @return a new instance with encryption/decryption support.
 	 */
-	public String getSchema() {
-		return schema;
+	public SimpleJdbcFileStore withEncryption(final char[] password) {
+		Objects.requireNonNull(password, "password must not be null");
+		if (password.length == 0) {
+			throw new IllegalArgumentException("password must not be empty");
+		}
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.schema, this.table, compression, this.blobExtractor, password.clone());
 	}
 
 	/**
-	 * Returns the table name.
+	 * Returns the database schema name, or an empty {@link Optional} if no schema
+	 * was specified.
 	 *
-	 * @return the table name
+	 * @return the database schema name, or an empty {@link Optional} if no schema
+	 *         was specified.
+	 */
+	public Optional<String> getSchema() {
+		return Optional.ofNullable(schema);
+	}
+
+	/**
+	 * Returns the database table name.
+	 *
+	 * @return the database table name
 	 */
 	public String getTable() {
 		return table;
@@ -481,7 +478,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						final InputStream inputStream;
 						if (ivSaltBase64 != null) {
 							if (password == null) {
-								throw new UnsupportedOperationException("Cannot decrypt data without password");
+								throw new UnsupportedOperationException("Can't decrypt data without password");
 							}
 							final byte[] ivSalt = Base64.getDecoder().decode(ivSaltBase64);
 							final Cipher cipher = createDecryptionCipher(password, Arrays.copyOf(ivSalt, INITIALIZATION_VECTOR_LENGTH), Arrays.copyOfRange(ivSalt, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SALT_LENGTH));

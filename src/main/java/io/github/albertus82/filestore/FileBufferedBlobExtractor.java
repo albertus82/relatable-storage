@@ -32,7 +32,7 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 	 * @param bufferDirectory the directory in which temporary files will be stored
 	 */
 	public FileBufferedBlobExtractor(final Path bufferDirectory) {
-		Objects.requireNonNull(bufferDirectory);
+		Objects.requireNonNull(bufferDirectory, "bufferDirectory must not be null");
 		this.bufferDirectory = bufferDirectory;
 	}
 

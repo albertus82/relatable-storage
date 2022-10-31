@@ -86,38 +86,43 @@ class SimpleJdbcFileStoreTest {
 	void testApiBehaviour() throws IOException {
 		final FileBufferedBlobExtractor fbbe = new FileBufferedBlobExtractor();
 
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", null, fbbe));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, Compression.MEDIUM, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, null, fbbe));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, "STORAGE", null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, Compression.MEDIUM, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, null, fbbe));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, " ", Compression.NONE, fbbe));
-		Assertions.assertThrows(NullPointerException.class, () -> new FileBufferedBlobExtractor(null));
-		Assertions.assertDoesNotThrow(() -> new SimpleJdbcFileStore(jdbcTemplate, "SCHEMA", "TABLE", Compression.LOW, fbbe));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", null));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, fbbe));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, "STORAGE", null));
+		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, fbbe));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, " ", fbbe));
 
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, fbbe);
-		Assertions.assertDoesNotThrow(() -> store.list());
-		Assertions.assertNotNull(store.list());
-		Assertions.assertThrows(NullPointerException.class, () -> store.delete(null));
-		Assertions.assertThrows(NullPointerException.class, () -> store.get(null));
-		Assertions.assertThrows(NullPointerException.class, () -> store.rename("a", null));
-		Assertions.assertThrows(NullPointerException.class, () -> store.rename(null, "b"));
-		Assertions.assertThrows(NullPointerException.class, () -> store.rename(null, null));
+		final SimpleJdbcFileStore s1 = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", fbbe);
+		Assertions.assertThrows(NullPointerException.class, () -> s1.withCompression(null));
+		Assertions.assertThrows(NullPointerException.class, () -> s1.withEncryption(null));
+		Assertions.assertThrows(NullPointerException.class, () -> s1.withSchema(null));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withEncryption(new char[0]));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withSchema(""));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withSchema("\t  \r\n"));
+		Assertions.assertDoesNotThrow(() -> s1.withSchema("SCHEMA"));
+
+		final SimpleFileStore s2 = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", fbbe).withCompression(Compression.MEDIUM);
+		Assertions.assertDoesNotThrow(() -> s2.list());
+		Assertions.assertNotNull(s2.list());
+		Assertions.assertThrows(NullPointerException.class, () -> s2.delete(null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.get(null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.rename("a", null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.rename(null, "b"));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.rename(null, null));
+
+		Assertions.assertThrows(NullPointerException.class, () -> new FileBufferedBlobExtractor(null));
 
 		final DescriptiveResource dr = new DescriptiveResource("x");
-		Assertions.assertThrows(NullPointerException.class, () -> store.store(null, "y"));
-		Assertions.assertThrows(NullPointerException.class, () -> store.store(dr, null));
-		Assertions.assertThrows(NullPointerException.class, () -> store.store(null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.store(null, "y"));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.store(dr, null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.store(null, null));
 	}
 
 	@Test
 	void testList() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
 		final Resource toSave = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));
 		store.store(toSave, "myfile.txt");
@@ -126,7 +131,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testListWithFilters() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "foo.txt");
 		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "bar.txt");
@@ -159,7 +164,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testRename() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.MEDIUM, new FileBufferedBlobExtractor());
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		final Resource toSave1 = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));
 		store.store(toSave1, "foo.txt");
 		Assertions.assertTrue(store.get("foo.txt").exists());
@@ -178,7 +183,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreListGetDeleteFromStream() throws IOException {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
-				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, be);
+				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
 				try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 					store.store(new InputStreamResource(is), "myfile.txt");
 				}
@@ -214,7 +219,7 @@ class SimpleJdbcFileStoreTest {
 	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
-				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, be, "TestPassword0$".toCharArray());
+				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("TestPassword0$".toCharArray());
 				try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 					store.store(new InputStreamResource(is), "myfile.txt");
 				}
@@ -250,7 +255,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreListGetDeleteFromFile() throws IOException {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
-				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, be);
+				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
 				Path tempFile = null;
 				try {
 					tempFile = Files.createTempFile(null, null);
@@ -291,7 +296,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testStore() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.LOW, new FileBufferedBlobExtractor());
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
 		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 			Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
@@ -308,7 +313,7 @@ class SimpleJdbcFileStoreTest {
 				try {
 					for (final Compression compression : Compression.values()) {
 						final String fileName = UUID.randomUUID().toString();
-						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, be);
+						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
 						try (final InputStream is = Files.newInputStream(f)) {
 							Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
 						}
@@ -356,7 +361,7 @@ class SimpleJdbcFileStoreTest {
 			tempFile = createDummyFile(DataSize.ofMegabytes(32));
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
-				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", compression, new DirectBlobExtractor());
+				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
 				try (final InputStream is = Files.newInputStream(tempFile)) {
 					Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
 				}
@@ -390,7 +395,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testDuplicate() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.HIGH, new FileBufferedBlobExtractor());
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
 		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 			store.store(new InputStreamResource(is), "myfile.txt");
 		}
@@ -403,7 +408,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testHash() throws IOException {
-		final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", Compression.HIGH, new FileBufferedBlobExtractor());
+		final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
 		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
 			store.store(new InputStreamResource(is), "myfile.txt");
 		}
