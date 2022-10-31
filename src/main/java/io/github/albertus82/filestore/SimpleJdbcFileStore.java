@@ -65,10 +65,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
 	private final JdbcOperations jdbcOperations;
-	private final String schema;
 	private final String table;
-	private final Compression compression;
 	private final BlobExtractor blobExtractor;
+	private final String schema;
+	private final Compression compression;
 	private final char[] password;
 
 	/**
@@ -79,10 +79,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @param blobExtractor the BLOB extraction strategy
 	 */
 	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
-		this(jdbcOperations, null, table, Compression.NONE, blobExtractor, null);
+		this(jdbcOperations, table, blobExtractor, null, Compression.NONE, null);
 	}
 
-	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String schema, final String table, final Compression compression, final BlobExtractor blobExtractor, final char[] password) {
+	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final String schema, final Compression compression, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
@@ -90,10 +90,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			throw new IllegalArgumentException("table must not be blank");
 		}
 		this.jdbcOperations = jdbcOperations;
-		this.schema = schema;
 		this.table = table;
-		this.compression = compression;
 		this.blobExtractor = blobExtractor;
+		this.schema = schema;
+		this.compression = compression;
 		this.password = password;
 	}
 
@@ -109,7 +109,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		if (schema.isBlank()) {
 			throw new IllegalArgumentException("schema must not be blank");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, schema, this.table, this.compression, this.blobExtractor, this.password);
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, schema, this.compression, this.password);
 	}
 
 	/**
@@ -121,7 +121,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	public SimpleJdbcFileStore withCompression(final Compression compression) {
 		Objects.requireNonNull(compression, "compression must not be null");
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.schema, this.table, compression, this.blobExtractor, this.password);
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.schema, compression, this.password);
 	}
 
 	/**
@@ -136,7 +136,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		if (password.length == 0) {
 			throw new IllegalArgumentException("password must not be empty");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.schema, this.table, compression, this.blobExtractor, password.clone());
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.schema, compression, password.clone());
 	}
 
 	/**
