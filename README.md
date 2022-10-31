@@ -18,7 +18,8 @@ CREATE TABLE storage (
 );
 ```
 
-| FILENAME | CONTENT_LENGTH | LAST_MODIFIED          | FILE_CONTENTS                        | COMPRESSED | SHA256_BASE64                               | CREATION_TIME          |
-| -------- | -------------: | ---------------------- | ------------------------------------ | ---------: | ------------------------------------------- | ---------------------- |
-| foo.txt  |              9 | 26-JUN-22 08:40:46,907 | 6173646667686a6b6c                   |          0 | GW/J1z9qSb/kQMmt8W8QrmMRReQJebyJy30jzHDMrWQ | 26-JUN-22 08:40:46,985 |
-| bar.txt  |             10 | 26-JUN-22 08:33:31,035 | 789c2b2c4f2d2aa92ccdcc2f0000185b046a |          1 | mpAEA6wxO6J6G8gfCTJlK4Ag2sksI02Y+gsGvwBA7P0 | 26-JUN-22 08:33:31,036 |
+| FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | FILE_CONTENTS | COMPRESSED | SHA256_BASE64                               | IV_SALT_BASE64                                                   | CREATION_TIME           |
+| -------- | -------------: | ----------------------- | ------------- | ---------: | ------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| foo.txt  |            123 | 2022-10-31 23:10:22,607 | (BLOB)        |          1 | GW/J1z9qSb/kQMmt8W8QrmMRReQJebyJy30jzHDMrWQ | (null)                                                           | 2022-10-31 23:10:22,610 |
+| bar.png  |           4567 | 2022-10-31 23:10:49,669 | (BLOB)        |          0 | mpAEA6wxO6J6G8gfCTJlK4Ag2sksI02Y+gsGvwBA7P0 | (null)                                                           | 2022-10-31 23:10:49,672 |
+| baz.zip  |          89012 | 2022-10-31 23:11:02,607 | (BLOB)        |          0 | mpAEA6wxO6J6G8gfCTJlK4Ag2sksI02Y+gsGvwBA7P0 | JilvD8V8BQ3vYs3E3htFjq1sKOiKeyidjMGtc4QaxyB2hGAN3yvq7LU7Vww2sRtC | 2022-10-31 23:11:02,610 |
