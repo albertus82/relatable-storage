@@ -57,12 +57,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static final String DIGEST_ALGORITHM = "SHA-256";
 	private static final String SQL_ESCAPE = "\\";
 
-	private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
 	private static final String ALGORITHM = "AES";
 	private static final String TRANSFORMATION = ALGORITHM + "/GCM/NoPadding";
 	private static final byte INITIALIZATION_VECTOR_LENGTH = 12; // bytes
-	private static final byte SALT_LENGTH = 32; // bytes
 	private static final short AUTHENTICATION_TAG_LENGTH = 128; // bits
+	private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
+	private static final short SECRET_KEY_LENGTH = 256; // bits
+	private static final int SECRET_KEY_ITERATION_COUNT = 65536;
+	private static final byte SECRET_KEY_SALT_LENGTH = 32; // bytes
 
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
@@ -483,7 +485,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 								throw new UnsupportedOperationException("Can't decrypt data without password");
 							}
 							final byte[] ivSalt = Base64.getDecoder().decode(ivSaltBase64);
-							final Cipher cipher = createDecryptionCipher(password, Arrays.copyOf(ivSalt, INITIALIZATION_VECTOR_LENGTH), Arrays.copyOfRange(ivSalt, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SALT_LENGTH));
+							final Cipher cipher = createDecryptionCipher(password, Arrays.copyOf(ivSalt, INITIALIZATION_VECTOR_LENGTH), Arrays.copyOfRange(ivSalt, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SECRET_KEY_SALT_LENGTH));
 							inputStream = new CipherInputStream(plainTextInputStream, cipher);
 						}
 						else {
@@ -508,7 +510,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private Cipher createDecryptionCipher(final char[] password, final byte[] initializationVector, final byte[] salt) {
 			try {
 				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt, ALGORITHM), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
+				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
 				return cipher;
 			}
 			catch (final GeneralSecurityException e) {
@@ -568,11 +570,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			final SecureRandom random = new SecureRandom();
 			initializationVector = new byte[INITIALIZATION_VECTOR_LENGTH];
 			random.nextBytes(initializationVector);
-			salt = new byte[SALT_LENGTH];
+			salt = new byte[SECRET_KEY_SALT_LENGTH];
 			random.nextBytes(salt);
 			try {
 				cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt, ALGORITHM), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
+				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
 			}
 			catch (final GeneralSecurityException e) {
 				throw new IllegalStateException(e);
@@ -592,15 +594,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
-	private static SecretKey generateKeyFromPassword(final char[] password, final byte[] salt, final String algorithm) {
+	private static SecretKey generateKeyFromPassword(final char[] password, final byte[] salt) {
 		Objects.requireNonNull(password);
 		Objects.requireNonNull(salt);
-		Objects.requireNonNull(algorithm);
 		try {
 			final SecretKeyFactory factory = SecretKeyFactory.getInstance(SECRET_KEY_ALGORITHM);
-			final KeySpec spec = new PBEKeySpec(password, salt, 65536, 256);
+			final KeySpec spec = new PBEKeySpec(password, salt, SECRET_KEY_ITERATION_COUNT, SECRET_KEY_LENGTH);
 			final SecretKey generateSecret = factory.generateSecret(spec);
-			return new SecretKeySpec(generateSecret.getEncoded(), algorithm);
+			return new SecretKeySpec(generateSecret.getEncoded(), ALGORITHM);
 		}
 		catch (final InvalidKeySpecException | NoSuchAlgorithmException | RuntimeException e) {
 			throw new IllegalStateException(e);
