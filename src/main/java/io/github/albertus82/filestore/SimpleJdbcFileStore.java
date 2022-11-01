@@ -34,7 +34,7 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -58,9 +58,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static final String SQL_ESCAPE = "\\";
 
 	private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
-	private static final String TRANSFORMATION = "AES/CBC/PKCS5PADDING";
+	private static final String TRANSFORMATION = "AES/GCM/NoPadding";
 	private static final byte INITIALIZATION_VECTOR_LENGTH = 16;
 	private static final byte SALT_LENGTH = 32;
+	private static final short AUTHENTICATION_TAG_LENGTH = 128;
 
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
@@ -506,7 +507,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private Cipher createDecryptionCipher(final char[] password, final byte[] initializationVector, final byte[] salt) {
 			try {
 				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt, TRANSFORMATION), new IvParameterSpec(initializationVector));
+				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt, TRANSFORMATION), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
 				return cipher;
 			}
 			catch (final GeneralSecurityException e) {
@@ -570,7 +571,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			random.nextBytes(salt);
 			try {
 				cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt, TRANSFORMATION), new IvParameterSpec(initializationVector));
+				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt, TRANSFORMATION), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
 			}
 			catch (final GeneralSecurityException e) {
 				throw new IllegalStateException(e);
