@@ -76,7 +76,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private final char[] password;
 
 	/**
-	 * Creates a new instance based on a database table.
+	 * Creates a new instance based on a database table. All the parameters are
+	 * mandatory.
 	 *
 	 * @param jdbcOperations the JDBC executor
 	 * @param table the database table name
@@ -86,6 +87,19 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		this(jdbcOperations, table, blobExtractor, Compression.NONE, null, null);
 	}
 
+	/**
+	 * Creates a new instance based on a database table.
+	 *
+	 * @param jdbcOperations the JDBC executor (mandatory)
+	 * @param table the database table name (mandatory)
+	 * @param blobExtractor the BLOB extraction strategy (mandatory)
+	 * @param compression the data compression level (mandatory, use
+	 *        {@link Compression#NONE} to store uncompressed data).
+	 * @param schema the database schema name (can be null, so that no schema name
+	 *        will be included in the generated SQL).
+	 * @param password the encryption/decryption password (can be null, so that
+	 *        neither encryption nor decryption will be performed).
+	 */
 	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final Compression compression, final String schema, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
