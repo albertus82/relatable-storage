@@ -18,7 +18,7 @@ CREATE TABLE storage (
 );
 ```
 
-| FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | FILE_CONTENTS | COMPRESSED | SHA256_BASE64                               | IV_SALT_BASE64                                              | CREATION_TIME           |
+| FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | FILE_CONTENTS | COMPRESSED | SHA256_BASE64                               | ENCRYPT_PARAMS                                              | CREATION_TIME           |
 | -------- | -------------: | ----------------------- | ------------- | ---------: | ------------------------------------------- | ----------------------------------------------------------- | ----------------------- |
 | foo.txt  |            123 | 2022-10-31 23:10:22,607 | (BLOB)        |          1 | 5G7KPv58uPLaIyNB00/gyTHEwf+5jAR8/H/jGrE9bFE | (null)                                                      | 2022-10-31 23:10:22,610 |
 | bar.png  |           4567 | 2022-10-31 23:10:49,669 | (BLOB)        |          0 | Aj0/svVCZP9A+0FEbGToFFxf6577BHLa37gKrPksFrg | (null)                                                      | 2022-10-31 23:10:49,672 |
