@@ -1,4 +1,4 @@
-package io.github.albertus82.filestore;
+package io.github.albertus82.filestore.jdbc;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,6 +49,11 @@ import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatemen
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
+import io.github.albertus82.filestore.Compression;
+import io.github.albertus82.filestore.SimpleFileStore;
+import io.github.albertus82.filestore.jdbc.crypto.EncryptionEquipment;
+import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
+
 /** Basic RDBMS-based implementation of a filestore. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public class SimpleJdbcFileStore implements SimpleFileStore {
@@ -56,15 +61,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
 	private static final String DIGEST_ALGORITHM = "SHA-256";
 	private static final String SQL_ESCAPE = "\\";
-
-	private static final String ALGORITHM = "AES";
-	private static final String TRANSFORMATION = ALGORITHM + "/GCM/NoPadding";
-	private static final byte INITIALIZATION_VECTOR_LENGTH = 12; // bytes
-	private static final short AUTHENTICATION_TAG_LENGTH = 128; // bits
-	private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
-	private static final short SECRET_KEY_LENGTH = 256; // bits
-	private static final int SECRET_KEY_ITERATION_COUNT = 65536;
-	private static final byte SECRET_KEY_SALT_LENGTH = 32; // bytes
 
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
 
@@ -105,8 +101,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
 		Objects.requireNonNull(compression, "compression must not be null");
-		if (table.isBlank()) {
-			throw new IllegalArgumentException("table must not be blank");
+		if (table.isEmpty()) {
+			throw new IllegalArgumentException("table must not be empty");
 		}
 		this.jdbcOperations = jdbcOperations;
 		this.table = table;
@@ -136,8 +132,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	public SimpleJdbcFileStore withSchema(final String schema) {
 		Objects.requireNonNull(schema, "schema must not be null");
-		if (schema.isBlank()) {
-			throw new IllegalArgumentException("schema must not be blank");
+		if (schema.isEmpty()) {
+			throw new IllegalArgumentException("schema must not be empty");
 		}
 		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.compression, schema, this.password);
 	}
@@ -298,114 +294,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
-	/**
-	 * Logs the execution of a SQL statement. Can be overridden to customize logging
-	 * logic.
-	 *
-	 * @param sql the statement to log
-	 */
-	protected void logStatement(final String sql) {
-		Objects.requireNonNull(sql);
-		log.log(Level.FINE, "{0}", sql);
-	}
-
-	/**
-	 * Logs non-fatal exceptions that might be useful for debug. Can be overridden
-	 * to customize logging logic.
-	 *
-	 * @param thrown the exception to log
-	 * @param msgSupplier a supplier returning the log message
-	 */
-	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
-		Objects.requireNonNull(thrown);
-		Objects.requireNonNull(msgSupplier);
-		log.log(Level.FINE, thrown, msgSupplier);
-	}
-
-	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
-		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
-		final StringBuilder sb = new StringBuilder("INSERT INTO ");
-		appendSchemaAndTableName(sb);
-		if (password == null) {
-			sb.append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
-		}
-		else {
-			sb.append(" (filename, last_modified, compressed, file_contents, iv_salt_base64) VALUES (?, ?, ?, ?, ?)");
-		}
-		final String sql = sb.toString();
-		logStatement(sql);
-		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
-			try (final InputStream plainTextInputStream = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
-				final EncryptionCipherHolder holder = password != null ? new EncryptionCipherHolder(password) : null;
-				try (final InputStream inputStream = holder != null ? new CipherInputStream(plainTextInputStream, holder.getCipher()) : plainTextInputStream) {
-					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
-						@Override
-						protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
-							ps.setString(1, fileName);
-							ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
-							ps.setBoolean(3, !Compression.NONE.equals(compression));
-							lobCreator.setBlobAsBinaryStream(ps, 4, inputStream, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
-							if (password != null) {
-								final byte[] ivSalt = Arrays.copyOf(holder.getInitializationVector(), holder.getInitializationVector().length + holder.getSalt().length);
-								System.arraycopy(holder.getSalt(), 0, ivSalt, holder.getInitializationVector().length, holder.getSalt().length);
-								ps.setString(5, Base64.getEncoder().withoutPadding().encodeToString(ivSalt));
-							}
-						}
-					});
-				}
-			}
-			if (contentLength != -1 && cis.getCount() != contentLength) {
-				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
-			}
-			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
-		}
-		catch (final DuplicateKeyException e) {
-			logException(e, () -> fileName);
-			throw new FileAlreadyExistsException(fileName);
-		}
-		catch (final DataAccessException e) {
-			throw new IOException(e);
-		}
-		catch (final NoSuchAlgorithmException e) {
-			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
-		}
-	}
-
-	private String sanitizeIdentifier(final String identifier) throws IOException {
-		try {
-			return jdbcOperations.execute(new StatementCallback<String>() {
-				@Override
-				public String doInStatement(final Statement stmt) throws SQLException {
-					return stmt.enquoteIdentifier(identifier, true);
-				}
-			});
-		}
-		catch (final DataAccessException e) {
-			throw new IOException(e);
-		}
-	}
-
-	private <T extends Appendable> T appendSchemaAndTableName(final T sql) throws IOException {
-		if (schema != null) {
-			sql.append(sanitizeIdentifier(schema)).append('.');
-		}
-		sql.append(sanitizeIdentifier(table));
-		return sql;
-	}
-
-	private Timestamp determineLastModifiedTimestamp(final Resource resource) {
-		try {
-			final long lastModified = resource.lastModified();
-			if (lastModified > 0) {
-				return new Timestamp(lastModified);
-			}
-		}
-		catch (final IOException e) {
-			logException(e, resource::toString);
-		}
-		return new Timestamp(System.currentTimeMillis());
-	}
-
 	/** {@link Resource} implementation with a RDBMS table target. */
 	public class DatabaseResource extends AbstractResource { // NOSONAR Override the "equals" method in this class. Subclasses that add fields should override "equals" (java:S2160)
 
@@ -416,6 +304,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String sha256Hex) {
 			Objects.requireNonNull(fileName, "fileName must not be null");
+			Objects.requireNonNull(sha256Hex, "sha256Hex must not be null");
 			this.fileName = fileName;
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
@@ -483,7 +372,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		 */
 		@Override
 		public InputStream getInputStream() throws IOException {
-			final StringBuilder sb = new StringBuilder("SELECT compressed, iv_salt_base64, file_contents FROM ");
+			final StringBuilder sb = new StringBuilder("SELECT compressed, encrypt_params, file_contents FROM ");
 			appendSchemaAndTableName(sb).append(" WHERE filename=?");
 			final String sql = sb.toString();
 			logStatement(sql);
@@ -491,15 +380,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				return jdbcOperations.query(sql, rs -> {
 					if (rs.next()) {
 						final boolean compressed = rs.getBoolean(1);
-						final String ivSaltBase64 = rs.getString(2);
+						final String encryptParams = rs.getString(2);
 						final InputStream plainTextInputStream = blobExtractor.getInputStream(rs, 3);
 						final InputStream inputStream;
-						if (ivSaltBase64 != null) {
-							if (password == null) {
-								throw new UnsupportedOperationException("Can't decrypt data without password");
-							}
-							final byte[] ivSalt = Base64.getDecoder().decode(ivSaltBase64);
-							final Cipher cipher = createDecryptionCipher(password, Arrays.copyOf(ivSalt, INITIALIZATION_VECTOR_LENGTH), Arrays.copyOfRange(ivSalt, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SECRET_KEY_SALT_LENGTH));
+						if (encryptParams != null && !encryptParams.isEmpty()) {
+							final Cipher cipher = createDecryptionCipher(password, encryptParams);
 							inputStream = new CipherInputStream(plainTextInputStream, cipher);
 						}
 						else {
@@ -520,17 +405,120 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				throw new IOException(e);
 			}
 		}
+	}
 
-		private Cipher createDecryptionCipher(final char[] password, final byte[] initializationVector, final byte[] salt) {
-			try {
-				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
-				return cipher;
+	protected Optional<EncryptionEquipment> createEncryptionEquipment(final char[] password) {
+		return Optional.ofNullable(password != null ? DefaultEncryptionEquipment.getInstance(password) : null);
+	}
+
+	protected Cipher createDecryptionCipher(final char[] password, final String parameters) {
+		return DefaultEncryptionEquipment.getDecryptionCipher(password, parameters);
+	}
+
+	/**
+	 * Logs the execution of a SQL statement. Can be overridden to customize logging
+	 * logic.
+	 *
+	 * @param sql the statement to log
+	 */
+	protected void logStatement(final String sql) {
+		Objects.requireNonNull(sql);
+		log.log(Level.FINE, "{0}", sql);
+	}
+
+	/**
+	 * Logs non-fatal exceptions that might be useful for debug. Can be overridden
+	 * to customize logging logic.
+	 *
+	 * @param thrown the exception to log
+	 * @param msgSupplier a supplier returning the log message
+	 */
+	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
+		Objects.requireNonNull(thrown);
+		Objects.requireNonNull(msgSupplier);
+		log.log(Level.FINE, thrown, msgSupplier);
+	}
+
+	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
+		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
+		final StringBuilder sb = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(sb);
+		final EncryptionEquipment enc = createEncryptionEquipment(password).orElse(null);
+		if (enc != null && enc.getParameters() != null) {
+			sb.append(" (filename, last_modified, compressed, file_contents, encrypt_params) VALUES (?, ?, ?, ?, ?)");
+		}
+		else {
+			sb.append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+		}
+		final String sql = sb.toString();
+		logStatement(sql);
+		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
+			try (final InputStream plainTextInputStream = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
+				try (final InputStream inputStream = enc != null ? new CipherInputStream(plainTextInputStream, enc.getCipher()) : plainTextInputStream) {
+					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+						@Override
+						protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
+							ps.setString(1, fileName);
+							ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
+							ps.setBoolean(3, !Compression.NONE.equals(compression));
+							lobCreator.setBlobAsBinaryStream(ps, 4, inputStream, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+							if (enc != null && enc.getParameters() != null) {
+								ps.setString(5, enc.getParameters());
+							}
+						}
+					});
+				}
 			}
-			catch (final GeneralSecurityException e) {
-				throw new IllegalStateException(e);
+			if (contentLength != -1 && cis.getCount() != contentLength) {
+				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
+			}
+			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
+		}
+		catch (final DuplicateKeyException e) {
+			logException(e, () -> fileName);
+			throw new FileAlreadyExistsException(fileName);
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
+		}
+		catch (final NoSuchAlgorithmException e) {
+			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
+		}
+	}
+
+	private String sanitizeIdentifier(final String identifier) throws IOException {
+		try {
+			return jdbcOperations.execute(new StatementCallback<String>() {
+				@Override
+				public String doInStatement(final Statement stmt) throws SQLException {
+					return stmt.enquoteIdentifier(identifier, true);
+				}
+			});
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
+		}
+	}
+
+	private <T extends Appendable> T appendSchemaAndTableName(final T sql) throws IOException {
+		if (schema != null) {
+			sql.append(sanitizeIdentifier(schema)).append('.');
+		}
+		sql.append(sanitizeIdentifier(table));
+		return sql;
+	}
+
+	private Timestamp determineLastModifiedTimestamp(final Resource resource) {
+		try {
+			final long lastModified = resource.lastModified();
+			if (lastModified > 0) {
+				return new Timestamp(lastModified);
 			}
 		}
+		catch (final IOException e) {
+			logException(e, resource::toString);
+		}
+		return new Timestamp(System.currentTimeMillis());
 	}
 
 	private static int getDeflaterLevel(final Compression compression) {
@@ -574,13 +562,22 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 	}
 
-	private static class EncryptionCipherHolder {
-		private final Cipher cipher;
+	private static class DefaultEncryptionEquipment implements EncryptionEquipment {
+
+		private static final String ALGORITHM = "AES";
+		private static final String TRANSFORMATION = ALGORITHM + "/GCM/NoPadding";
+		private static final byte INITIALIZATION_VECTOR_LENGTH = 12; // bytes
+		private static final short AUTHENTICATION_TAG_LENGTH = 128; // bits
+		private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
+		private static final short SECRET_KEY_LENGTH = 256; // bits
+		private static final int SECRET_KEY_ITERATION_COUNT = 65536;
+		private static final byte SECRET_KEY_SALT_LENGTH = 32; // bytes
+
 		private final byte[] initializationVector;
 		private final byte[] salt;
+		private final Cipher cipher;
 
-		private EncryptionCipherHolder(final char[] password) {
-			Objects.requireNonNull(password);
+		private DefaultEncryptionEquipment(final char[] password) {
 			final SecureRandom random = new SecureRandom();
 			initializationVector = new byte[INITIALIZATION_VECTOR_LENGTH];
 			random.nextBytes(initializationVector);
@@ -595,30 +592,49 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			}
 		}
 
-		private Cipher getCipher() {
+		@Override
+		public Cipher getCipher() {
 			return cipher;
 		}
 
-		private byte[] getInitializationVector() {
-			return initializationVector;
+		@Override
+		public String getParameters() {
+			final byte[] bytes = Arrays.copyOf(initializationVector, initializationVector.length + salt.length);
+			System.arraycopy(salt, 0, bytes, initializationVector.length, salt.length);
+			return Base64.getEncoder().withoutPadding().encodeToString(bytes);
 		}
 
-		private byte[] getSalt() {
-			return salt;
+		private static EncryptionEquipment getInstance(final char[] password) {
+			return new DefaultEncryptionEquipment(password);
 		}
-	}
 
-	private static SecretKey generateKeyFromPassword(final char[] password, final byte[] salt) {
-		Objects.requireNonNull(password);
-		Objects.requireNonNull(salt);
-		try {
-			final SecretKeyFactory factory = SecretKeyFactory.getInstance(SECRET_KEY_ALGORITHM);
-			final KeySpec spec = new PBEKeySpec(password, salt, SECRET_KEY_ITERATION_COUNT, SECRET_KEY_LENGTH);
-			final SecretKey generateSecret = factory.generateSecret(spec);
-			return new SecretKeySpec(generateSecret.getEncoded(), ALGORITHM);
+		private static Cipher getDecryptionCipher(final char[] password, final String parameters) {
+			Objects.requireNonNull(parameters);
+			final byte[] bytes = Base64.getDecoder().decode(parameters);
+			final byte[] initializationVector = Arrays.copyOf(bytes, INITIALIZATION_VECTOR_LENGTH);
+			final byte[] salt = Arrays.copyOfRange(bytes, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SECRET_KEY_SALT_LENGTH);
+			try {
+				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
+				return cipher;
+			}
+			catch (final GeneralSecurityException e) {
+				throw new IllegalStateException(e);
+			}
 		}
-		catch (final InvalidKeySpecException | NoSuchAlgorithmException | RuntimeException e) {
-			throw new IllegalStateException(e);
+
+		private static SecretKey generateKeyFromPassword(final char[] password, final byte[] salt) {
+			Objects.requireNonNull(password);
+			Objects.requireNonNull(salt);
+			try {
+				final SecretKeyFactory factory = SecretKeyFactory.getInstance(SECRET_KEY_ALGORITHM);
+				final KeySpec spec = new PBEKeySpec(password, salt, SECRET_KEY_ITERATION_COUNT, SECRET_KEY_LENGTH);
+				final SecretKey generateSecret = factory.generateSecret(spec);
+				return new SecretKeySpec(generateSecret.getEncoded(), ALGORITHM);
+			}
+			catch (final InvalidKeySpecException | NoSuchAlgorithmException | RuntimeException e) {
+				throw new IllegalStateException(e);
+			}
 		}
 	}
 

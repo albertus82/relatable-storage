@@ -1,4 +1,4 @@
-package io.github.albertus82.filestore;
+package io.github.albertus82.filestore.jdbc;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -43,7 +43,14 @@ import org.springframework.util.unit.DataSize;
 
 import com.thedeanda.lorem.LoremIpsum;
 
-import io.github.albertus82.filestore.SimpleJdbcFileStore.DatabaseResource;
+import io.github.albertus82.filestore.Compression;
+import io.github.albertus82.filestore.SimpleFileStore;
+import io.github.albertus82.filestore.TestConfig;
+import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
+import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
+import io.github.albertus82.filestore.jdbc.extractor.DirectBlobExtractor;
+import io.github.albertus82.filestore.jdbc.extractor.FileBufferedBlobExtractor;
+import io.github.albertus82.filestore.jdbc.extractor.MemoryBufferedBlobExtractor;
 
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
@@ -93,7 +100,7 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, null, fbbe));
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, "STORAGE", null));
 		Assertions.assertThrows(NullPointerException.class, () -> new SimpleJdbcFileStore(null, null, fbbe));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, " ", fbbe));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> new SimpleJdbcFileStore(jdbcTemplate, "", fbbe));
 
 		final SimpleJdbcFileStore s1 = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", fbbe);
 		Assertions.assertThrows(NullPointerException.class, () -> s1.withCompression(null));
@@ -101,7 +108,6 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s1.withSchema(null));
 		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withEncryption(new char[0]));
 		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withSchema(""));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withSchema("\t  \r\n"));
 		Assertions.assertDoesNotThrow(() -> s1.withSchema("SCHEMA"));
 
 		final SimpleFileStore s2 = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", fbbe).withCompression(Compression.MEDIUM);

@@ -12,7 +12,7 @@
  * the License.
  */
 
-package io.github.albertus82.filestore;
+package io.github.albertus82.filestore.jdbc;
 
 import java.io.FilterInputStream;
 import java.io.IOException;

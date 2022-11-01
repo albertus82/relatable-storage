@@ -1,4 +1,4 @@
-package io.github.albertus82.filestore;
+package io.github.albertus82.filestore.jdbc.extractor;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
