@@ -90,6 +90,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
+		Objects.requireNonNull(compression, "compression must not be null");
 		if (table.isBlank()) {
 			throw new IllegalArgumentException("table must not be blank");
 		}
@@ -109,7 +110,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @return a new instance configured with the provided compression level.
 	 */
 	public SimpleJdbcFileStore withCompression(final Compression compression) {
-		Objects.requireNonNull(compression, "compression must not be null");
 		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, compression, this.schema, this.password);
 	}
 
