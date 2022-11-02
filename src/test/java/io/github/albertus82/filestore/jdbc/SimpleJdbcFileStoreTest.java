@@ -131,7 +131,7 @@ class SimpleJdbcFileStoreTest {
 	void testList() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
-		final Resource toSave = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));
+		final Resource toSave = new InputStreamResource(getClass().getResourceAsStream("10b.txt"));
 		store.store(toSave, "myfile.txt");
 		Assertions.assertEquals(1, store.list().size());
 	}
@@ -140,13 +140,13 @@ class SimpleJdbcFileStoreTest {
 	void testListWithFilters() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "foo.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "bar.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "test1.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "test2.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "tax%.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "taxi.txt");
-		store.store(new InputStreamResource(getClass().getResourceAsStream("/10b.txt")), "file.dat");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "foo.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "bar.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "test1.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "test2.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "tax%.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "taxi.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "file.dat");
 		Assertions.assertEquals(7, store.list().size());
 		Assertions.assertEquals(7, store.list("*").size());
 		Assertions.assertEquals(4, store.list("t*").size());
@@ -172,7 +172,7 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	void testRename() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
-		final Resource toSave1 = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));
+		final Resource toSave1 = new InputStreamResource(getClass().getResourceAsStream("10b.txt"));
 		store.store(toSave1, "foo.txt");
 		Assertions.assertTrue(store.get("foo.txt").exists());
 		store.rename("foo.txt", "bar.txt");
@@ -180,7 +180,7 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertEquals(1, store.list().size());
 		Assertions.assertThrows(NoSuchFileException.class, () -> store.get("foo.txt"));
 		Assertions.assertThrows(NoSuchFileException.class, () -> store.rename("foo.txt", "baz.txt"));
-		final Resource toSave2 = new InputStreamResource(getClass().getResourceAsStream("/10b.txt"));
+		final Resource toSave2 = new InputStreamResource(getClass().getResourceAsStream("10b.txt"));
 		store.store(toSave2, "foo.txt");
 		Assertions.assertEquals(2, store.list().size());
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.rename("foo.txt", "bar.txt"));
@@ -191,7 +191,7 @@ class SimpleJdbcFileStoreTest {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
 				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
-				try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 					store.store(new InputStreamResource(is), "myfile.txt");
 				}
 				final long timeAfter = System.currentTimeMillis();
@@ -227,7 +227,7 @@ class SimpleJdbcFileStoreTest {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
 				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("TestPassword0$".toCharArray());
-				try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 					store.store(new InputStreamResource(is), "myfile.txt");
 				}
 				final long timeAfter = System.currentTimeMillis();
@@ -403,12 +403,12 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	void testDuplicate() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
-		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			store.store(new InputStreamResource(is), "myfile.txt");
 		}
 		final List<Resource> list = store.list();
 		Assertions.assertEquals(1, list.size());
-		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
 	}
@@ -416,7 +416,7 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	void testHash() throws IOException {
 		final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
-		try (final InputStream is = getClass().getResourceAsStream("/10b.txt")) {
+		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			store.store(new InputStreamResource(is), "myfile.txt");
 		}
 		final DatabaseResource r = store.get("myfile.txt");
