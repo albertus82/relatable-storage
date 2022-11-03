@@ -452,7 +452,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		appendSchemaAndTableName(sb);
 		final EncryptionEquipment enc = createEncryptionEquipment(password).orElse(null);
 		if (enc != null && enc.getParameters() != null) {
-			sb.append(" (filename, last_modified, compressed, file_contents, encrypt_params) VALUES (?, ?, ?, ?, ?)");
+			sb.append(" (filename, last_modified, compressed, encrypt_params, file_contents) VALUES (?, ?, ?, ?, ?)");
 		}
 		else {
 			sb.append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
@@ -465,13 +465,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 						@Override
 						protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
-							ps.setString(1, fileName);
-							ps.setTimestamp(2, determineLastModifiedTimestamp(resource));
-							ps.setBoolean(3, !Compression.NONE.equals(compression));
-							lobCreator.setBlobAsBinaryStream(ps, 4, inputStream, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+							int columnIndex = 0;
+							ps.setString(++columnIndex, fileName);
+							ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
+							ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
 							if (enc != null && enc.getParameters() != null) {
-								ps.setString(5, enc.getParameters());
+								ps.setString(++columnIndex, enc.getParameters());
 							}
+							lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
 						}
 					});
 				}
