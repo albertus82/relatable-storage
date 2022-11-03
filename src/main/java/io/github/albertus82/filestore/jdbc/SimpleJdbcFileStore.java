@@ -372,18 +372,25 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		 */
 		@Override
 		public InputStream getInputStream() throws IOException {
-			final StringBuilder sb = new StringBuilder("SELECT compressed, encrypt_params, file_contents FROM ");
+			final StringBuilder sb = new StringBuilder();
+			if (password != null) {
+				sb.append("SELECT compressed, encrypt_params, file_contents FROM ");
+			}
+			else {
+				sb.append("SELECT compressed, file_contents FROM ");
+			}
 			appendSchemaAndTableName(sb).append(" WHERE filename=?");
 			final String sql = sb.toString();
 			logStatement(sql);
 			try {
 				return jdbcOperations.query(sql, rs -> {
 					if (rs.next()) {
-						final boolean compressed = rs.getBoolean(1);
-						final String encryptParams = rs.getString(2);
-						final InputStream plainTextInputStream = blobExtractor.getInputStream(rs, 3);
+						int columnIndex = 0;
+						final boolean compressed = rs.getBoolean(++columnIndex);
+						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
+						final InputStream plainTextInputStream = blobExtractor.getInputStream(rs, ++columnIndex);
 						final InputStream inputStream;
-						if (encryptParams != null && !encryptParams.isEmpty()) {
+						if (password != null) {
 							final Cipher cipher = createDecryptionCipher(password, encryptParams);
 							inputStream = new CipherInputStream(plainTextInputStream, cipher);
 						}
