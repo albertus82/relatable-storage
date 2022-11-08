@@ -10,6 +10,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -56,7 +57,7 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 		}
 	}
 
-	private static InputStream getInputStream(final ResultSet resultSet, final int blobColumnIndex, final Path bufferFile) throws SQLException, IOException {
+	private InputStream getInputStream(final ResultSet resultSet, final int blobColumnIndex, final Path bufferFile) throws SQLException, IOException {
 		try {
 			setPosixFilePermissions(bufferFile, "rw-------");
 			try (final InputStream in = resultSet.getBinaryStream(blobColumnIndex); final OutputStream out = Files.newOutputStream(bufferFile)) {
@@ -70,25 +71,38 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 		}
 	}
 
-	private static void setPosixFilePermissions(final Path file, final String rwxrwxrwx) throws IOException {
+	private void setPosixFilePermissions(final Path file, final String rwxrwxrwx) throws IOException {
 		try {
 			Files.setPosixFilePermissions(file, PosixFilePermissions.fromString(rwxrwxrwx));
 		}
 		catch (final UnsupportedOperationException e) {
-			log.log(Level.FINE, e, () -> "Cannot set POSIX permissions for file \"" + file + "\":");
+			logException(e, () -> "Cannot set POSIX permissions for file \"" + file + "\":");
 		}
 	}
 
-	private static void deleteIfExists(final Path file) {
+	private void deleteIfExists(final Path file) {
 		if (file != null) {
 			try {
 				Files.deleteIfExists(file);
 			}
 			catch (final IOException e) {
-				log.log(Level.FINE, e, () -> "Cannot delete file \"" + file + "\":");
+				logException(e, () -> "Cannot delete file \"" + file + "\":");
 				file.toFile().deleteOnExit();
 			}
 		}
+	}
+
+	/**
+	 * Logs non-fatal exceptions that might be useful for debug. Can be overridden
+	 * to customize logging logic.
+	 *
+	 * @param thrown the exception to log
+	 * @param msgSupplier a supplier returning the log message
+	 */
+	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
+		Objects.requireNonNull(thrown);
+		Objects.requireNonNull(msgSupplier);
+		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
 }
