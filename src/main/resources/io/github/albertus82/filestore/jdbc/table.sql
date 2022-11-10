@@ -5,6 +5,6 @@ CREATE TABLE storage (
     file_contents    BLOB NOT NULL,
     compressed       NUMERIC(1, 0) NOT NULL CHECK (compressed IN (0, 1)),
     sha256_base64    VARCHAR(43) /* NOT NULL DEFERRABLE INITIALLY DEFERRED */,
-    encrypt_params   VARCHAR(59),
+    encrypt_params   VARCHAR(64),
     creation_time    TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

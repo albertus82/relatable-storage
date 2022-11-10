@@ -34,7 +34,7 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -573,9 +573,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private static class DefaultEncryptionEquipment implements EncryptionEquipment {
 
 		private static final String ALGORITHM = "AES";
-		private static final String TRANSFORMATION = ALGORITHM + "/GCM/NoPadding";
-		private static final byte INITIALIZATION_VECTOR_LENGTH = 12; // bytes
-		private static final short AUTHENTICATION_TAG_LENGTH = 128; // bits
+		private static final String TRANSFORMATION = ALGORITHM + "/CTR/NoPadding";
+		private static final byte INITIALIZATION_VECTOR_LENGTH = 16; // bytes
 		private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
 		private static final short SECRET_KEY_LENGTH = 256; // bits
 		private static final int SECRET_KEY_ITERATION_COUNT = 65536;
@@ -593,7 +592,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			random.nextBytes(salt);
 			try {
 				cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
+				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt), new IvParameterSpec(initializationVector));
 			}
 			catch (final GeneralSecurityException e) {
 				throw new IllegalStateException(e);
@@ -623,7 +622,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			final byte[] salt = Arrays.copyOfRange(bytes, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SECRET_KEY_SALT_LENGTH);
 			try {
 				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new GCMParameterSpec(AUTHENTICATION_TAG_LENGTH, initializationVector));
+				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new IvParameterSpec(initializationVector));
 				return cipher;
 			}
 			catch (final GeneralSecurityException e) {
