@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -320,7 +322,7 @@ class SimpleJdbcFileStoreTest {
 				try {
 					for (final Compression compression : Compression.values()) {
 						final String fileName = UUID.randomUUID().toString();
-						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
+						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("testpass".toCharArray());
 						try (final InputStream is = Files.newInputStream(f)) {
 							Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
 						}
@@ -470,6 +472,71 @@ class SimpleJdbcFileStoreTest {
 			data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
 		}
 		return data;
+	}
+
+	@Test
+	@Disabled("Only for performance checks")
+	void performanceTest() throws IOException {
+		long atr = 0;
+		final AtomicLong atw = new AtomicLong();
+		final byte max = 5;
+		for (int i = 0; i < max; i++) {
+			Path tempFile = null;
+			try {
+				tempFile = createDummyFile(DataSize.ofMegabytes(256));
+				final Path f = tempFile;
+				try {
+					final Compression compression = Compression.NONE;
+					final String fileName = UUID.randomUUID().toString();
+					final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(compression).withEncryption("testpass".toCharArray());
+					try (final InputStream is = Files.newInputStream(f)) {
+						Assertions.assertDoesNotThrow(() -> {
+							final long t0 = System.nanoTime();
+							store.store(new InputStreamResource(is), fileName);
+							final long t = System.nanoTime() - t0;
+							log.log(Level.INFO, "Written in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
+							atw.addAndGet(t);
+						});
+					}
+
+					final byte[] buffer = new byte[8192];
+					final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
+					try (final InputStream is = Files.newInputStream(f)) {
+						int bytesCount = 0;
+						while ((bytesCount = is.read(buffer)) != -1) {
+							digestSource.update(buffer, 0, bytesCount);
+						}
+					}
+					final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
+					final long t0 = System.nanoTime();
+					final DatabaseResource dr = store.get(fileName);
+					try (final InputStream stored = dr.getInputStream()) {
+						int bytesCount = 0;
+						while ((bytesCount = stored.read(buffer)) != -1) {
+							digestStored.update(buffer, 0, bytesCount);
+						}
+					}
+					final long t = System.nanoTime() - t0;
+					log.log(Level.INFO, "Read in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
+					atr += t;
+					final byte[] sha256Source = digestSource.digest();
+					final byte[] sha256Stored = digestStored.digest();
+					Assertions.assertArrayEquals(sha256Source, sha256Stored);
+					Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
+				}
+				catch (final IOException e) {
+					throw new UncheckedIOException(e);
+				}
+				catch (final NoSuchAlgorithmException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			finally {
+				deleteIfExists(tempFile);
+			}
+		}
+		log.log(Level.INFO, "Avg write: {0} ms.", TimeUnit.NANOSECONDS.toMillis(atw.get() / max));
+		log.log(Level.INFO, "Avg read: {0} ms.", TimeUnit.NANOSECONDS.toMillis(atr / max));
 	}
 
 }

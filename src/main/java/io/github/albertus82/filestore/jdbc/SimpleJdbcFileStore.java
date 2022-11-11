@@ -1,5 +1,6 @@
 package io.github.albertus82.filestore.jdbc;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
@@ -388,16 +389,9 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						int columnIndex = 0;
 						final boolean compressed = rs.getBoolean(++columnIndex);
 						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
-						final InputStream plainTextInputStream = blobExtractor.getInputStream(rs, ++columnIndex);
-						final InputStream inputStream;
-						if (password != null) {
-							final Cipher cipher = createDecryptionCipher(password, encryptParams);
-							inputStream = new CipherInputStream(plainTextInputStream, cipher);
-						}
-						else {
-							inputStream = plainTextInputStream;
-						}
-						return compressed ? new InflaterInputStream(inputStream) : inputStream;
+						final InputStream raw = blobExtractor.getInputStream(rs, ++columnIndex);
+						final InputStream in = password == null ? raw : new CipherInputStream(new BufferedInputStream(raw), createDecryptionCipher(password, encryptParams));
+						return compressed ? new InflaterInputStream(new BufferedInputStream(in)) : in;
 					}
 					else {
 						throw new EmptyResultDataAccessException(1);
@@ -459,7 +453,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 		final String sql = sb.toString();
 		logStatement(sql);
-		try (final InputStream ris = resource.getInputStream(); final DigestInputStream dis = new DigestInputStream(ris, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
+		try (final InputStream ris = resource.getInputStream(); final InputStream bis = new BufferedInputStream(ris); final DigestInputStream dis = new DigestInputStream(bis, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
 			try (final InputStream plainTextInputStream = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
 				try (final InputStream inputStream = enc != null ? new CipherInputStream(plainTextInputStream, enc.getCipher()) : plainTextInputStream) {
 					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
