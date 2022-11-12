@@ -574,16 +574,16 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private static final int SECRET_KEY_ITERATION_COUNT = 65536;
 		private static final byte SECRET_KEY_SALT_LENGTH = 32; // bytes
 
-		private final byte[] initializationVector;
 		private final byte[] salt;
+		private final byte[] initializationVector;
 		private final Cipher cipher;
 
 		private DefaultEncryptionEquipment(final char[] password) {
 			final SecureRandom random = new SecureRandom();
-			initializationVector = new byte[INITIALIZATION_VECTOR_LENGTH];
-			random.nextBytes(initializationVector);
 			salt = new byte[SECRET_KEY_SALT_LENGTH];
 			random.nextBytes(salt);
+			initializationVector = new byte[INITIALIZATION_VECTOR_LENGTH];
+			random.nextBytes(initializationVector);
 			try {
 				cipher = Cipher.getInstance(TRANSFORMATION);
 				cipher.init(Cipher.ENCRYPT_MODE, generateKeyFromPassword(password, salt), new IvParameterSpec(initializationVector));
@@ -600,8 +600,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 		@Override
 		public String getParameters() {
-			final byte[] bytes = Arrays.copyOf(initializationVector, initializationVector.length + salt.length);
-			System.arraycopy(salt, 0, bytes, initializationVector.length, salt.length);
+			final byte[] bytes = Arrays.copyOf(salt, salt.length + initializationVector.length);
+			System.arraycopy(initializationVector, 0, bytes, salt.length, initializationVector.length);
 			return Base64.getEncoder().withoutPadding().encodeToString(bytes);
 		}
 
@@ -612,8 +612,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private static Cipher getDecryptionCipher(final char[] password, final String parameters) {
 			Objects.requireNonNull(parameters);
 			final byte[] bytes = Base64.getDecoder().decode(parameters);
-			final byte[] initializationVector = Arrays.copyOf(bytes, INITIALIZATION_VECTOR_LENGTH);
-			final byte[] salt = Arrays.copyOfRange(bytes, INITIALIZATION_VECTOR_LENGTH, INITIALIZATION_VECTOR_LENGTH + SECRET_KEY_SALT_LENGTH);
+			final byte[] salt = Arrays.copyOf(bytes, SECRET_KEY_SALT_LENGTH);
+			final byte[] initializationVector = Arrays.copyOfRange(bytes, SECRET_KEY_SALT_LENGTH, SECRET_KEY_SALT_LENGTH + INITIALIZATION_VECTOR_LENGTH);
 			try {
 				final Cipher cipher = Cipher.getInstance(TRANSFORMATION);
 				cipher.init(Cipher.DECRYPT_MODE, generateKeyFromPassword(password, salt), new IvParameterSpec(initializationVector));
