@@ -2,6 +2,7 @@ package io.github.albertus82.filestore.jdbc.crypto;
 
 import javax.crypto.Cipher;
 
+/** Provides the objects needed to properly encrypt data. */
 public interface EncryptionEquipment {
 
 	/**
