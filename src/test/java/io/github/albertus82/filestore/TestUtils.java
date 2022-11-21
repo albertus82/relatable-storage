@@ -1,15 +1,16 @@
 package io.github.albertus82.filestore;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.io.Writer;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,6 +23,8 @@ public class TestUtils {
 
 	private static final Logger log = Logger.getLogger(TestUtils.class.getName());
 
+	private static final LoremIpsum lorem = LoremIpsum.getInstance();
+
 	public static byte[] createDummyByteArray(final DataSize size) throws IOException {
 		if (size == null) {
 			throw new NullPointerException();
@@ -29,21 +32,12 @@ public class TestUtils {
 		if (size.toBytes() < 0) {
 			throw new IllegalArgumentException(size.toString());
 		}
-		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-			while (baos.size() < size.toBytes()) {
-				final String s = LoremIpsum.getInstance().getWords(100);
-				for (final byte b : s.getBytes(StandardCharsets.US_ASCII)) {
-					if (baos.size() >= size.toBytes()) {
-						break;
-					}
-					baos.write(b);
-				}
-			}
-			if (baos.size() != size.toBytes()) {
-				throw new IllegalStateException();
-			}
-			return baos.toByteArray();
+		final var words = 200;
+		final ByteBuffer buf = ByteBuffer.allocate((int) size.toBytes() + words * 9);
+		while (buf.position() < size.toBytes()) {
+			buf.put(lorem.getWords(words).getBytes(StandardCharsets.US_ASCII));
 		}
+		return Arrays.copyOf(buf.array(), (int) size.toBytes());
 	}
 
 	public static Path createDummyFile(final DataSize size) throws IOException {
@@ -59,7 +53,7 @@ public class TestUtils {
 		tmp.toFile().deleteOnExit();
 		try (final Writer w = Files.newBufferedWriter(tmp, StandardCharsets.US_ASCII, StandardOpenOption.TRUNCATE_EXISTING)) {
 			while (currSize < size.toBytes()) {
-				final String s = LoremIpsum.getInstance().getWords(100);
+				final String s = lorem.getWords(1000);
 				currSize += s.length();
 				w.append(s).append(System.lineSeparator());
 			}
