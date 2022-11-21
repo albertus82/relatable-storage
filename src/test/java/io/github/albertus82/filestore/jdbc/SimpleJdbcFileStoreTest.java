@@ -3,16 +3,12 @@ package io.github.albertus82.filestore.jdbc;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
-import java.io.Writer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -43,10 +39,9 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.unit.DataSize;
 
-import com.thedeanda.lorem.LoremIpsum;
-
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.TestConfig;
+import io.github.albertus82.filestore.TestUtils;
 import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
 import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
@@ -315,7 +310,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreLarge() throws Exception {
 		Path tempFile = null;
 		try {
-			tempFile = createDummyFile(DataSize.ofMegabytes(32));
+			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
 			final Path f = tempFile;
 			List.of(new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor()).parallelStream().forEach(be -> {
 				try {
@@ -356,7 +351,7 @@ class SimpleJdbcFileStoreTest {
 			});
 		}
 		finally {
-			deleteIfExists(tempFile);
+			TestUtils.deleteIfExists(tempFile);
 		}
 	}
 
@@ -365,7 +360,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreLargeTransactional() throws Exception {
 		Path tempFile = null;
 		try {
-			tempFile = createDummyFile(DataSize.ofMegabytes(32));
+			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
 				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
@@ -395,7 +390,7 @@ class SimpleJdbcFileStoreTest {
 			}
 		}
 		finally {
-			deleteIfExists(tempFile);
+			TestUtils.deleteIfExists(tempFile);
 		}
 	}
 
@@ -412,46 +407,6 @@ class SimpleJdbcFileStoreTest {
 		}
 	}
 
-	private static Path createDummyFile(final DataSize size) throws IOException {
-		if (size == null) {
-			throw new NullPointerException();
-		}
-		if (size.toBytes() < 0) {
-			throw new IllegalArgumentException(size.toString());
-		}
-		log.log(Level.FINE, "Creating {0} dummy file...", size);
-		long currSize = 0;
-		final Path tmp = Files.createTempFile(null, null);
-		tmp.toFile().deleteOnExit();
-		try (final Writer w = Files.newBufferedWriter(tmp, StandardCharsets.US_ASCII, StandardOpenOption.TRUNCATE_EXISTING)) {
-			while (currSize < size.toBytes()) {
-				final String s = LoremIpsum.getInstance().getWords(100);
-				currSize += s.length();
-				w.append(s).append(System.lineSeparator());
-			}
-		}
-		try (final RandomAccessFile raf = new RandomAccessFile(tmp.toFile(), "rw"); final FileChannel fc = raf.getChannel()) {
-			fc.truncate(size.toBytes());
-		}
-		if (tmp.toFile().length() != size.toBytes()) {
-			throw new IllegalStateException();
-		}
-		log.log(Level.FINE, "Dummy file created: \"{0}\".", tmp);
-		return tmp;
-	}
-
-	private static void deleteIfExists(final Path file) {
-		if (file != null) {
-			try {
-				Files.deleteIfExists(file);
-			}
-			catch (final IOException e) {
-				log.log(Level.FINE, e, () -> "Cannot delete file \"" + file + "\":");
-				file.toFile().deleteOnExit();
-			}
-		}
-	}
-
 	@Test
 	@Disabled("Only for performance checks")
 	void performanceTest() throws IOException {
@@ -461,7 +416,7 @@ class SimpleJdbcFileStoreTest {
 		for (int i = 0; i < max; i++) {
 			Path tempFile = null;
 			try {
-				tempFile = createDummyFile(DataSize.ofMegabytes(256));
+				tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(256));
 				final Path f = tempFile;
 				try {
 					final Compression compression = Compression.NONE;
@@ -509,7 +464,7 @@ class SimpleJdbcFileStoreTest {
 				}
 			}
 			finally {
-				deleteIfExists(tempFile);
+				TestUtils.deleteIfExists(tempFile);
 			}
 		}
 		log.log(Level.INFO, "Avg write: {0} ms.", TimeUnit.NANOSECONDS.toMillis(atw.get() / max));

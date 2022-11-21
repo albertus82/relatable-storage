@@ -24,7 +24,6 @@ public class GzipCompressingInputStream extends InputStream {
 	public GzipCompressingInputStream(InputStream in, int compressionLevel) throws IOException {
 		this.in = in;
 		this.delegate = new OutputStream() {
-
 			private void growBufferIfNeeded(int len) {
 				if ((write + len) >= buf.length) {
 					// grow the array if we don't have enough space to fulfill the incoming data
