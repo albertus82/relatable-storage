@@ -24,7 +24,7 @@ public class GzipCompressingInputStream extends InputStream {
 	public GzipCompressingInputStream(final InputStream in, final int compressionLevel) throws IOException {
 		this.in = in;
 		this.delegate = new OutputStream() {
-			private void growBufferIfNeeded(int len) {
+			private void growBufferIfNeeded(final int len) {
 				if ((write + len) >= buf.length) {
 					// grow the array if we don't have enough space to fulfill the incoming data
 					final byte[] newbuf = new byte[(buf.length + len) * 2];
@@ -34,14 +34,14 @@ public class GzipCompressingInputStream extends InputStream {
 			}
 
 			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
+			public void write(final byte[] b, final int off, final int len) {
 				growBufferIfNeeded(len);
 				System.arraycopy(b, off, buf, write, len);
 				write += len;
 			}
 
 			@Override
-			public void write(int b) throws IOException {
+			public void write(final int b) {
 				growBufferIfNeeded(1);
 				buf[write++] = (byte) b;
 			}
