@@ -372,10 +372,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 					if (rs.next()) {
 						int columnIndex = 0;
 						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
-						final InputStream raw = blobExtractor.getInputStream(rs, ++columnIndex);
-						final InputStream in = password == null ? raw : new CipherInputStream(new BufferedInputStream(raw), createDecryptionCipher(password, encryptParams));
+						final InputStream blobInputStream = new BufferedInputStream(blobExtractor.getInputStream(rs, ++columnIndex));
+						final InputStream plainTextInputStream = password == null ? blobInputStream : new CipherInputStream(blobInputStream, createDecryptionCipher(password, encryptParams));
 						try {
-							return new GZIPInputStream(new BufferedInputStream(in));
+							return new GZIPInputStream(plainTextInputStream);
 						}
 						catch (final IOException e) {
 							throw new LobRetrievalFailureException("Cannot extract data", e);
