@@ -1,5 +1,6 @@
 package io.github.albertus82.filestore;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -20,6 +21,30 @@ import com.thedeanda.lorem.LoremIpsum;
 public class TestUtils {
 
 	private static final Logger log = Logger.getLogger(TestUtils.class.getName());
+
+	public static byte[] createDummyByteArray(final DataSize size) throws IOException {
+		if (size == null) {
+			throw new NullPointerException();
+		}
+		if (size.toBytes() < 0) {
+			throw new IllegalArgumentException(size.toString());
+		}
+		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+			while (baos.size() < size.toBytes()) {
+				final String s = LoremIpsum.getInstance().getWords(100);
+				for (final byte b : s.getBytes(StandardCharsets.US_ASCII)) {
+					if (baos.size() >= size.toBytes()) {
+						break;
+					}
+					baos.write(b);
+				}
+			}
+			if (baos.size() != size.toBytes()) {
+				throw new IllegalStateException();
+			}
+			return baos.toByteArray();
+		}
+	}
 
 	public static Path createDummyFile(final DataSize size) throws IOException {
 		if (size == null) {
