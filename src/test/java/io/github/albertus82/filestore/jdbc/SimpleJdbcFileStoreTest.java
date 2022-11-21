@@ -47,7 +47,7 @@ import com.thedeanda.lorem.LoremIpsum;
 
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.TestConfig;
-import io.github.albertus82.filestore.compression.Compression;
+import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
 import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.extractor.DirectBlobExtractor;

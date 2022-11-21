@@ -1,4 +1,4 @@
-package io.github.albertus82.filestore.compression;
+package io.github.albertus82.filestore.io;
 
 import java.util.zip.Deflater;
 

@@ -47,8 +47,9 @@ import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
 import io.github.albertus82.filestore.SimpleFileStore;
-import io.github.albertus82.filestore.compression.Compression;
-import io.github.albertus82.filestore.compression.GzipCompressingInputStream;
+import io.github.albertus82.filestore.io.Compression;
+import io.github.albertus82.filestore.io.CountingInputStream;
+import io.github.albertus82.filestore.io.GzipCompressingInputStream;
 import io.github.albertus82.filestore.jdbc.crypto.EncryptionEquipment;
 import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
 
