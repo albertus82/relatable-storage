@@ -378,7 +378,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 							return new GZIPInputStream(new BufferedInputStream(in));
 						}
 						catch (final IOException e) {
-							throw new LobRetrievalFailureException("Could not extract compressed data", e);
+							throw new LobRetrievalFailureException("Cannot extract data", e);
 						}
 					}
 					else {
