@@ -28,8 +28,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.Deflater;
-import java.util.zip.DeflaterInputStream;
-import java.util.zip.InflaterInputStream;
+import java.util.zip.GZIPInputStream;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -44,6 +43,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.LobRetrievalFailureException;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.StatementCallback;
 import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
@@ -391,7 +391,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
 						final InputStream raw = blobExtractor.getInputStream(rs, ++columnIndex);
 						final InputStream in = password == null ? raw : new CipherInputStream(new BufferedInputStream(raw), createDecryptionCipher(password, encryptParams));
-						return compressed ? new InflaterInputStream(new BufferedInputStream(in)) : in;
+						try {
+							return new GZIPInputStream(new BufferedInputStream(in));
+						}
+						catch (final IOException e) {
+							throw new LobRetrievalFailureException("Could not extract compressed data", e);
+						}
 					}
 					else {
 						throw new EmptyResultDataAccessException(1);
@@ -454,7 +459,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = sb.toString();
 		logStatement(sql);
 		try (final InputStream ris = resource.getInputStream(); final InputStream bis = new BufferedInputStream(ris); final DigestInputStream dis = new DigestInputStream(bis, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
-			try (final InputStream plainTextInputStream = Compression.NONE.equals(compression) ? cis : new DeflaterInputStream(cis, new Deflater(getDeflaterLevel(compression)))) {
+			try (final InputStream plainTextInputStream = new GzipCompressingInputStream(cis, getDeflaterLevel(compression))) {
 				try (final InputStream inputStream = enc != null ? new CipherInputStream(plainTextInputStream, enc.getCipher()) : plainTextInputStream) {
 					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 						@Override
@@ -462,11 +467,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 							int columnIndex = 0;
 							ps.setString(++columnIndex, fileName);
 							ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
-							ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
+							ps.setBoolean(++columnIndex, true);
 							if (enc != null && enc.getParameters() != null) {
 								ps.setString(++columnIndex, enc.getParameters());
 							}
-							lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, Compression.NONE.equals(compression) && contentLength < Integer.MAX_VALUE ? (int) contentLength : -1);
+							lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
 						}
 					});
 				}
@@ -531,6 +536,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return Deflater.BEST_SPEED;
 		case MEDIUM:
 			return Deflater.DEFAULT_COMPRESSION;
+		case NONE:
+			return Deflater.NO_COMPRESSION;
 		default:
 			throw new IllegalArgumentException(compression.toString());
 		}
