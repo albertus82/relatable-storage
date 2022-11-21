@@ -13,21 +13,21 @@ import java.util.zip.GZIPOutputStream;
  */
 public class GzipCompressingInputStream extends InputStream {
 
-	private InputStream in;
-	private GZIPOutputStream gz;
-	private OutputStream delegate;
+	private final InputStream in;
+	private final GZIPOutputStream gz;
+	private final OutputStream delegate;
+	private final byte[] readBuf = new byte[8192];
 	private byte[] buf = new byte[8192];
-	private byte[] readBuf = new byte[8192];
 	int read = 0;
 	int write = 0;
 
-	public GzipCompressingInputStream(InputStream in, int compressionLevel) throws IOException {
+	public GzipCompressingInputStream(final InputStream in, final int compressionLevel) throws IOException {
 		this.in = in;
 		this.delegate = new OutputStream() {
 			private void growBufferIfNeeded(int len) {
 				if ((write + len) >= buf.length) {
 					// grow the array if we don't have enough space to fulfill the incoming data
-					byte[] newbuf = new byte[(buf.length + len) * 2];
+					final byte[] newbuf = new byte[(buf.length + len) * 2];
 					System.arraycopy(buf, 0, newbuf, 0, buf.length);
 					buf = newbuf;
 				}
@@ -50,9 +50,9 @@ public class GzipCompressingInputStream extends InputStream {
 	}
 
 	@Override
-	public int read(byte[] b, int off, int len) throws IOException {
+	public int read(final byte[] b, final int off, final int len) throws IOException {
 		compressStream();
-		int numBytes = Math.min(len, write - read);
+		final int numBytes = Math.min(len, write - read);
 		if (numBytes > 0) {
 			System.arraycopy(buf, read, b, off, numBytes);
 			read += numBytes;
