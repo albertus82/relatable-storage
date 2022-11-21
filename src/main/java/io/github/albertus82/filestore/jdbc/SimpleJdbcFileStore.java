@@ -4,12 +4,9 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
-import java.security.DigestInputStream;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -27,7 +24,6 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 
 import javax.crypto.Cipher;
@@ -50,8 +46,9 @@ import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatemen
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 
-import io.github.albertus82.filestore.Compression;
 import io.github.albertus82.filestore.SimpleFileStore;
+import io.github.albertus82.filestore.compression.Compression;
+import io.github.albertus82.filestore.compression.GzipCompressingInputStream;
 import io.github.albertus82.filestore.jdbc.crypto.EncryptionEquipment;
 import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
 
@@ -59,8 +56,6 @@ import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public class SimpleJdbcFileStore implements SimpleFileStore {
 
-	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
-	private static final String DIGEST_ALGORITHM = "SHA-256";
 	private static final String SQL_ESCAPE = "\\";
 
 	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
@@ -185,7 +180,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
-		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified, sha256_base64 FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified FROM ");
 		appendSchemaAndTableName(sb);
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
@@ -207,7 +202,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			return jdbcOperations.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(4)))), args.toArray(new Object[args.size()]));
+			return jdbcOperations.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime()), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -217,14 +212,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, sha256_base64 FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
 			return jdbcOperations.query(sql, rs -> {
 				if (rs.next()) {
-					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), bytesToHex(Base64.getDecoder().decode(rs.getString(3))));
+					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime());
 				}
 				else {
 					throw new EmptyResultDataAccessException(1);
@@ -244,13 +239,13 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	public void store(final Resource resource, final String fileName) throws FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final InsertResult ir = insert(resource, fileName);
+		final long contentLength = insert(resource, fileName);
 		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET content_length=?, sha256_base64=? WHERE filename=?");
+		appendSchemaAndTableName(sb).append(" SET content_length=? WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			jdbcOperations.update(sql, ir.getContentLength(), Base64.getEncoder().withoutPadding().encodeToString(ir.getSha256Digest()), fileName);
+			jdbcOperations.update(sql, contentLength, fileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -301,15 +296,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private final String fileName;
 		private final long contentLength;
 		private final long lastModified;
-		private final String sha256Hex;
 
-		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String sha256Hex) {
+		private DatabaseResource(final String fileName, final long contentLength, final long lastModified) {
 			Objects.requireNonNull(fileName, "fileName must not be null");
-			Objects.requireNonNull(sha256Hex, "sha256Hex must not be null");
 			this.fileName = fileName;
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
-			this.sha256Hex = sha256Hex;
 		}
 
 		/** Returns the file name. */
@@ -328,15 +320,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public long lastModified() {
 			return lastModified;
-		}
-
-		/**
-		 * Returns the SHA-256 checksum of the content, in hexadecimal format.
-		 *
-		 * @return the SHA-256 checksum of the content, in hexadecimal format.
-		 */
-		public String getSha256Hex() {
-			return sha256Hex;
 		}
 
 		/** Checks if the resource exists in the database. */
@@ -375,10 +358,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		public InputStream getInputStream() throws IOException {
 			final StringBuilder sb = new StringBuilder();
 			if (password != null) {
-				sb.append("SELECT compressed, encrypt_params, file_contents FROM ");
+				sb.append("SELECT encrypt_params, file_contents FROM ");
 			}
 			else {
-				sb.append("SELECT compressed, file_contents FROM ");
+				sb.append("SELECT file_contents FROM ");
 			}
 			appendSchemaAndTableName(sb).append(" WHERE filename=?");
 			final String sql = sb.toString();
@@ -387,7 +370,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				return jdbcOperations.query(sql, rs -> {
 					if (rs.next()) {
 						int columnIndex = 0;
-						final boolean compressed = rs.getBoolean(++columnIndex);
 						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
 						final InputStream raw = blobExtractor.getInputStream(rs, ++columnIndex);
 						final InputStream in = password == null ? raw : new CipherInputStream(new BufferedInputStream(raw), createDecryptionCipher(password, encryptParams));
@@ -445,21 +427,21 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
-	private InsertResult insert(final Resource resource, final String fileName) throws IOException {
+	private long insert(final Resource resource, final String fileName) throws IOException {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb);
 		final EncryptionEquipment enc = createEncryptionEquipment(password).orElse(null);
 		if (enc != null && enc.getParameters() != null) {
-			sb.append(" (filename, last_modified, compressed, encrypt_params, file_contents) VALUES (?, ?, ?, ?, ?)");
+			sb.append(" (filename, last_modified, encrypt_params, file_contents) VALUES (?, ?, ?, ?)");
 		}
 		else {
-			sb.append(" (filename, last_modified, compressed, file_contents) VALUES (?, ?, ?, ?)");
+			sb.append(" (filename, last_modified, file_contents) VALUES (?, ?, ?)");
 		}
 		final String sql = sb.toString();
 		logStatement(sql);
-		try (final InputStream ris = resource.getInputStream(); final InputStream bis = new BufferedInputStream(ris); final DigestInputStream dis = new DigestInputStream(bis, MessageDigest.getInstance(DIGEST_ALGORITHM)); final CountingInputStream cis = new CountingInputStream(dis)) {
-			try (final InputStream plainTextInputStream = new GzipCompressingInputStream(cis, getDeflaterLevel(compression))) {
+		try (final InputStream ris = resource.getInputStream(); final InputStream bis = new BufferedInputStream(ris); final CountingInputStream cis = new CountingInputStream(bis)) {
+			try (final InputStream plainTextInputStream = new GzipCompressingInputStream(cis, compression.getDeflaterLevel())) {
 				try (final InputStream inputStream = enc != null ? new CipherInputStream(plainTextInputStream, enc.getCipher()) : plainTextInputStream) {
 					jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
 						@Override
@@ -467,7 +449,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 							int columnIndex = 0;
 							ps.setString(++columnIndex, fileName);
 							ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
-							ps.setBoolean(++columnIndex, true);
 							if (enc != null && enc.getParameters() != null) {
 								ps.setString(++columnIndex, enc.getParameters());
 							}
@@ -479,7 +460,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			if (contentLength != -1 && cis.getCount() != contentLength) {
 				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
 			}
-			return new InsertResult(cis.getCount(), dis.getMessageDigest().digest());
+			return cis.getCount();
 		}
 		catch (final DuplicateKeyException e) {
 			logException(e, () -> fileName);
@@ -487,9 +468,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
-		}
-		catch (final NoSuchAlgorithmException e) {
-			throw new UnsupportedOperationException(DIGEST_ALGORITHM, e);
 		}
 	}
 
@@ -526,49 +504,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			logException(e, resource::toString);
 		}
 		return new Timestamp(System.currentTimeMillis());
-	}
-
-	private static int getDeflaterLevel(final Compression compression) {
-		switch (compression) {
-		case HIGH:
-			return Deflater.BEST_COMPRESSION;
-		case LOW:
-			return Deflater.BEST_SPEED;
-		case MEDIUM:
-			return Deflater.DEFAULT_COMPRESSION;
-		case NONE:
-			return Deflater.NO_COMPRESSION;
-		default:
-			throw new IllegalArgumentException(compression.toString());
-		}
-	}
-
-	private static String bytesToHex(final byte[] bytes) {
-		final byte[] hexChars = new byte[bytes.length * 2];
-		for (int j = 0; j < bytes.length; j++) {
-			final int v = bytes[j] & 0xFF;
-			hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-			hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-		}
-		return new String(hexChars, StandardCharsets.UTF_8);
-	}
-
-	private static class InsertResult {
-		private final long contentLength;
-		private final byte[] sha256Digest;
-
-		private InsertResult(final long contentLength, final byte[] sha256Digest) {
-			this.contentLength = contentLength;
-			this.sha256Digest = sha256Digest;
-		}
-
-		private long getContentLength() {
-			return contentLength;
-		}
-
-		private byte[] getSha256Digest() {
-			return sha256Digest;
-		}
 	}
 
 	private static class DefaultEncryptionEquipment implements EncryptionEquipment {

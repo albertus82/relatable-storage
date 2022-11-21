@@ -45,9 +45,9 @@ import org.springframework.util.unit.DataSize;
 
 import com.thedeanda.lorem.LoremIpsum;
 
-import io.github.albertus82.filestore.Compression;
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.TestConfig;
+import io.github.albertus82.filestore.compression.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
 import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.extractor.DirectBlobExtractor;
@@ -82,13 +82,13 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testDatabase1() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, compressed) VALUES (?, ?, ?, ?, ?)", "a", 1, "x".getBytes(), new Date(), false);
+		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified) VALUES (?, ?, ?, ?)", "a", 1, "x".getBytes(), new Date());
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
 	@Test
 	void testDatabase2() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, compressed) VALUES (?, ?, ?, ?, ?)", "b", 2, "yz".getBytes(), new Date(), false);
+		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified) VALUES (?, ?, ?, ?)", "b", 2, "yz".getBytes(), new Date());
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
@@ -168,7 +168,6 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertEquals(2, store.list("*oo.txt", "bar.txt").size());
 		Assertions.assertEquals(6, store.list("*.txt", "bar.txt").size());
 		Assertions.assertEquals(1, store.list("*.d?t").size());
-
 	}
 
 	@Test
@@ -346,7 +345,6 @@ class SimpleJdbcFileStoreTest {
 						final byte[] sha256Source = digestSource.digest();
 						final byte[] sha256Stored = digestStored.digest();
 						Assertions.assertArrayEquals(sha256Source, sha256Stored);
-						Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
 					}
 				}
 				catch (IOException e) {
@@ -394,7 +392,6 @@ class SimpleJdbcFileStoreTest {
 				final byte[] sha256Source = digestSource.digest();
 				final byte[] sha256Stored = digestStored.digest();
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
-				Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
 			}
 		}
 		finally {
@@ -413,16 +410,6 @@ class SimpleJdbcFileStoreTest {
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
-	}
-
-	@Test
-	void testHash() throws IOException {
-		final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
-		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
-			store.store(new InputStreamResource(is), "myfile.txt");
-		}
-		final DatabaseResource r = store.get("myfile.txt");
-		Assertions.assertEquals("9a900403ac313ba27a1bc81f0932652b8020dac92c234d98fa0b06bf0040ecfd", r.getSha256Hex());
 	}
 
 	private static Path createDummyFile(final DataSize size) throws IOException {
@@ -463,15 +450,6 @@ class SimpleJdbcFileStoreTest {
 				file.toFile().deleteOnExit();
 			}
 		}
-	}
-
-	private static byte[] hexToBytes(final String hex) {
-		final int len = hex.length();
-		final byte[] data = new byte[len / 2];
-		for (int i = 0; i < len; i += 2) {
-			data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
-		}
-		return data;
 	}
 
 	@Test
@@ -522,7 +500,6 @@ class SimpleJdbcFileStoreTest {
 					final byte[] sha256Source = digestSource.digest();
 					final byte[] sha256Stored = digestStored.digest();
 					Assertions.assertArrayEquals(sha256Source, sha256Stored);
-					Assertions.assertArrayEquals(sha256Source, hexToBytes(dr.getSha256Hex()));
 				}
 				catch (final IOException e) {
 					throw new UncheckedIOException(e);

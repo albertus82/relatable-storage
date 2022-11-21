@@ -1,4 +1,4 @@
-package io.github.albertus82.filestore.jdbc;
+package io.github.albertus82.filestore.compression;
 
 import java.io.IOException;
 import java.io.OutputStream;
