@@ -65,7 +65,7 @@ public class TestUtils {
 		}
 	}
 
-	public static String getSha256Hex(final Path file) throws IOException {
+	public static String sha256Hex(final Path file) throws IOException {
 		try (final InputStream data = Files.newInputStream(file)) {
 			return DigestUtils.sha256Hex(data);
 		}

@@ -28,7 +28,7 @@ class GzipCompressingInputStreamTest {
 		try {
 			original = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
 			log.log(Level.INFO, "Original length: {0}", original.toFile().length());
-			final String srcHash = TestUtils.getSha256Hex(original);
+			final String srcHash = TestUtils.sha256Hex(original);
 			for (final int compressionLevel : new int[] { Deflater.NO_COMPRESSION, Deflater.BEST_SPEED, Deflater.DEFAULT_COMPRESSION, Deflater.BEST_COMPRESSION }) {
 				log.log(Level.INFO, "Compression level: {0}", compressionLevel);
 				compressed = Files.createTempFile(null, null);
@@ -49,7 +49,7 @@ class GzipCompressingInputStreamTest {
 					gzis.transferTo(os);
 				}
 
-				final String decompressedHash = TestUtils.getSha256Hex(decompressed);
+				final String decompressedHash = TestUtils.sha256Hex(decompressed);
 				Assertions.assertEquals(srcHash, decompressedHash);
 			}
 		}

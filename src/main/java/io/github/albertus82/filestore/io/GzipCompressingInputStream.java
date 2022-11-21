@@ -100,6 +100,8 @@ public class GzipCompressingInputStream extends InputStream {
 
 	@Override
 	public void close() throws IOException {
+		gz.close();
+		delegate.close();
 		in.close();
 	}
 

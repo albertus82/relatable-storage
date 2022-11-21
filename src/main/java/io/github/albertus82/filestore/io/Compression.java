@@ -23,6 +23,11 @@ public enum Compression {
 		this.deflaterLevel = deflaterLevel;
 	}
 
+	/**
+	 * Returns the corresponding {@link Deflater} level.
+	 * 
+	 * @return the corresponding {@link Deflater} level.
+	 */
 	public int getDeflaterLevel() {
 		return deflaterLevel;
 	}
