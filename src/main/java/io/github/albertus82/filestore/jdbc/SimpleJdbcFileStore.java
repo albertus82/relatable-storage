@@ -373,7 +373,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						int columnIndex = 0;
 						final String encryptParams = password != null ? rs.getString(++columnIndex) : null;
 						final InputStream blobInputStream = new BufferedInputStream(blobExtractor.getInputStream(rs, ++columnIndex));
-						final InputStream plainTextInputStream = password == null ? blobInputStream : new CipherInputStream(blobInputStream, createDecryptionCipher(password, encryptParams));
+						final InputStream plainTextInputStream = encryptParams == null ? blobInputStream : new CipherInputStream(blobInputStream, createDecryptionCipher(password, encryptParams));
 						try {
 							return new GZIPInputStream(plainTextInputStream);
 						}
