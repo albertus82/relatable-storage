@@ -12,8 +12,8 @@ import java.util.zip.GZIPOutputStream;
 public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 
 	/**
-	 * Creates a new output stream with a default buffer size and the specified
-	 * flush mode.
+	 * Creates a new output stream with a default buffer size, the specified flush
+	 * mode and compression level.
 	 *
 	 * @param out the output stream
 	 * @param syncFlush if {@code true} invocation of the inherited
@@ -23,7 +23,7 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	 *        stream
 	 * @param compressionLevel the new compression level (0-9)
 	 *
-	 * @throws IOException If an I/O error has occurred.
+	 * @throws IOException if an I/O error has occurred
 	 * @throws IllegalArgumentException if the compression level is invalid
 	 */
 	public CustomLevelGzipOutputStream(final OutputStream out, final boolean syncFlush, final int compressionLevel) throws IOException {
@@ -32,7 +32,8 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	}
 
 	/**
-	 * Creates a new output stream with the specified buffer size and flush mode.
+	 * Creates a new output stream with the specified buffer size, flush mode and
+	 * compression level.
 	 *
 	 * @param out the output stream
 	 * @param size the output buffer size
@@ -43,8 +44,8 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	 *        stream
 	 * @param compressionLevel the new compression level (0-9)
 	 * 
-	 * @throws IOException If an I/O error has occurred.
-	 * @throws IllegalArgumentException if {@code size <= 0} or if the compression
+	 * @throws IOException if an I/O error has occurred
+	 * @throws IllegalArgumentException if {@code size <= 0} or the compression
 	 *         level is invalid
 	 */
 	public CustomLevelGzipOutputStream(final OutputStream out, final int size, final boolean syncFlush, final int compressionLevel) throws IOException {
@@ -53,7 +54,8 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	}
 
 	/**
-	 * Creates a new output stream with the specified buffer size.
+	 * Creates a new output stream with the specified buffer size and compression
+	 * level.
 	 *
 	 * <p>
 	 * The new output stream instance is created as if by invoking the 3-argument
@@ -63,8 +65,8 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	 * @param size the output buffer size
 	 * @param compressionLevel the new compression level (0-9)
 	 *
-	 * @throws IOException If an I/O error has occurred.
-	 * @throws IllegalArgumentException if {@code size <= 0} or if the compression
+	 * @throws IOException if an I/O error has occurred
+	 * @throws IllegalArgumentException if {@code size <= 0} or the compression
 	 *         level is invalid
 	 */
 	public CustomLevelGzipOutputStream(final OutputStream out, final int size, final int compressionLevel) throws IOException {
@@ -73,7 +75,8 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	}
 
 	/**
-	 * Creates a new output stream with a default buffer size.
+	 * Creates a new output stream with a default buffer size and the specified
+	 * compression level.
 	 *
 	 * <p>
 	 * The new output stream instance is created as if by invoking the 2-argument
@@ -82,7 +85,7 @@ public class CustomLevelGzipOutputStream extends GZIPOutputStream {
 	 * @param out the output stream
 	 * @param compressionLevel the new compression level (0-9)
 	 *
-	 * @throws IOException If an I/O error has occurred.
+	 * @throws IOException if an I/O error has occurred
 	 * @throws IllegalArgumentException if the compression level is invalid
 	 */
 	public CustomLevelGzipOutputStream(final OutputStream out, final int compressionLevel) throws IOException {
