@@ -38,7 +38,11 @@ public final class CountingInputStream extends FilterInputStream {
 		super(Objects.requireNonNull(in));
 	}
 
-	/** Returns the number of bytes read. */
+	/**
+	 * Returns the number of bytes read.
+	 * 
+	 * @return the number of bytes read
+	 */
 	public long getCount() {
 		return count;
 	}

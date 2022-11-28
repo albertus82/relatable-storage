@@ -16,16 +16,15 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -44,24 +43,36 @@ import io.github.albertus82.filestore.TestConfig;
 import io.github.albertus82.filestore.TestUtils;
 import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
-import io.github.albertus82.filestore.jdbc.extractor.BlobExtractor;
-import io.github.albertus82.filestore.jdbc.extractor.DirectBlobExtractor;
-import io.github.albertus82.filestore.jdbc.extractor.FileBufferedBlobExtractor;
-import io.github.albertus82.filestore.jdbc.extractor.MemoryBufferedBlobExtractor;
+import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
+import io.github.albertus82.filestore.jdbc.read.DirectBlobExtractor;
+import io.github.albertus82.filestore.jdbc.read.FileBufferedBlobExtractor;
+import io.github.albertus82.filestore.jdbc.read.MemoryBufferedBlobExtractor;
 
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
 
-	private static final Logger log = Logger.getLogger(SimpleJdbcFileStoreTest.class.getName());
+	private static final boolean DEBUG = false;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
 	@BeforeAll
 	static void beforeAll() {
-		Logger.getLogger("").setLevel(Level.FINE);
-		for (final Handler h : Logger.getLogger("").getHandlers()) {
-			h.setLevel(Level.FINE);
+		if (DEBUG) {
+			Logger.getLogger("").setLevel(Level.FINE);
+			for (final Handler h : Logger.getLogger("").getHandlers()) {
+				h.setLevel(Level.FINE);
+			}
+		}
+	}
+
+	@AfterAll
+	static void afterAll() {
+		if (DEBUG) {
+			Logger.getLogger("").setLevel(Level.INFO);
+			for (final Handler h : Logger.getLogger("").getHandlers()) {
+				h.setLevel(Level.INFO);
+			}
 		}
 	}
 
@@ -72,18 +83,19 @@ class SimpleJdbcFileStoreTest {
 
 	@AfterEach
 	void afterEach() {
+		jdbcTemplate.execute("TRUNCATE TABLE storage");
 		jdbcTemplate.execute("DROP TABLE storage");
 	}
 
 	@Test
 	void testDatabase1() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified) VALUES (?, ?, ?, ?)", "a", 1, "x".getBytes(), new Date());
+		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?)", "a", 1, "x".getBytes(), new Date(), true, false);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
 	@Test
 	void testDatabase2() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified) VALUES (?, ?, ?, ?)", "b", 2, "yz".getBytes(), new Date());
+		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?)", "b", 2, "yz".getBytes(), new Date(), false, true);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
@@ -116,7 +128,7 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.rename(null, "b"));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.rename(null, null));
 
-		Assertions.assertThrows(NullPointerException.class, () -> new FileBufferedBlobExtractor(null));
+		Assertions.assertThrows(NullPointerException.class, () -> new FileBufferedBlobExtractor().withDirectory(null));
 
 		final DescriptiveResource dr = new DescriptiveResource("x");
 		Assertions.assertThrows(NullPointerException.class, () -> s2.store(null, "y"));
@@ -405,70 +417,6 @@ class SimpleJdbcFileStoreTest {
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.store(new InputStreamResource(is), "myfile.txt"));
 		}
-	}
-
-	@Test
-	@Disabled("Only for performance checks")
-	void performanceTest() throws IOException {
-		long atr = 0;
-		final AtomicLong atw = new AtomicLong();
-		final byte max = 5;
-		for (int i = 0; i < max; i++) {
-			Path tempFile = null;
-			try {
-				tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(256));
-				final Path f = tempFile;
-				try {
-					final Compression compression = Compression.NONE;
-					final String fileName = UUID.randomUUID().toString();
-					final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(compression).withEncryption("testpass".toCharArray());
-					try (final InputStream is = Files.newInputStream(f)) {
-						Assertions.assertDoesNotThrow(() -> {
-							final long t0 = System.nanoTime();
-							store.store(new InputStreamResource(is), fileName);
-							final long t = System.nanoTime() - t0;
-							log.log(Level.INFO, "Written in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
-							atw.addAndGet(t);
-						});
-					}
-
-					final byte[] buffer = new byte[8192];
-					final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
-					try (final InputStream is = Files.newInputStream(f)) {
-						int bytesCount = 0;
-						while ((bytesCount = is.read(buffer)) != -1) {
-							digestSource.update(buffer, 0, bytesCount);
-						}
-					}
-					final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-					final long t0 = System.nanoTime();
-					final DatabaseResource dr = store.get(fileName);
-					try (final InputStream stored = dr.getInputStream()) {
-						int bytesCount = 0;
-						while ((bytesCount = stored.read(buffer)) != -1) {
-							digestStored.update(buffer, 0, bytesCount);
-						}
-					}
-					final long t = System.nanoTime() - t0;
-					log.log(Level.INFO, "Read in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
-					atr += t;
-					final byte[] sha256Source = digestSource.digest();
-					final byte[] sha256Stored = digestStored.digest();
-					Assertions.assertArrayEquals(sha256Source, sha256Stored);
-				}
-				catch (final IOException e) {
-					throw new UncheckedIOException(e);
-				}
-				catch (final NoSuchAlgorithmException e) {
-					throw new RuntimeException(e);
-				}
-			}
-			finally {
-				TestUtils.deleteIfExists(tempFile);
-			}
-		}
-		log.log(Level.INFO, "Avg write: {0} ms.", TimeUnit.NANOSECONDS.toMillis(atw.get() / max));
-		log.log(Level.INFO, "Avg read: {0} ms.", TimeUnit.NANOSECONDS.toMillis(atr / max));
 	}
 
 }
