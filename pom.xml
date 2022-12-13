@@ -38,7 +38,7 @@
 		<maven.compiler.release>11</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.build.outputTimestamp>${git.commit.time}</project.build.outputTimestamp>
-		<spring.version>5.3.24</spring.version>
+		<spring.version>6.0.0</spring.version>
 		<maven.version.rules>${project.baseUri}maven-version-rules.xml</maven.version.rules>
 	</properties>
 
@@ -298,20 +298,22 @@
 						<phase>integration-test</phase>
 						<configuration>
 							<target>
-								<property name="checksums.file" value="${project.build.directory}/checksums.md" />
-								<property name="checksums.directory" value="${project.build.directory}/checksums" />
-								<delete file="${checksums.file}" />
-								<checksum algorithm="SHA-256" todir="${checksums.directory}" forceoverwrite="yes" fileext=".sha256" pattern="* {1}&#13;&#10;[`{0}`](https://www.virustotal.com/it/file/{0}/analysis/)">
+								<property name="checksums.file" value="${project.build.directory}/checksums.md"/>
+								<property name="checksums.directory" value="${project.build.directory}/checksums"/>
+								<delete file="${checksums.file}"/>
+								<checksum algorithm="SHA-256" todir="${checksums.directory}" forceoverwrite="yes" fileext=".sha256" pattern="* {1}
+[`{0}`](https://www.virustotal.com/it/file/{0}/analysis/)">
 									<fileset dir="${project.build.directory}">
-										<include name="*.jar" />
+										<include name="*.jar"/>
 									</fileset>
 								</checksum>
-								<echo file="${checksums.file}" message="### Checksums SHA-256&#13;&#10;" />
+								<echo file="${checksums.file}" message="### Checksums SHA-256
+"/>
 								<concat destfile="${checksums.file}" append="true">
-									<fileset dir="${checksums.directory}" />
+									<fileset dir="${checksums.directory}"/>
 								</concat>
-								<loadfile property="checksums.file.contents" srcFile="${checksums.file}" />
-								<echo level="info" message="${checksums.file.contents}" />
+								<loadfile property="checksums.file.contents" srcFile="${checksums.file}"/>
+								<echo level="info" message="${checksums.file.contents}"/>
 							</target>
 						</configuration>
 						<goals>
@@ -366,7 +368,7 @@
 				<configuration>
 					<flattenMode>ossrh</flattenMode>
 					<pomElements>
-						<inceptionYear />
+						<inceptionYear/>
 					</pomElements>
 				</configuration>
 				<executions>
