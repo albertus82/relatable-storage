@@ -335,7 +335,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return lastModified;
 		}
 
-		/** Returns the UUID of the stored object */
+		/**
+		 * Returns the UUID of the stored object.
+		 *
+		 * @return the UUID of the stored object.
+		 */
 		public UUID getUUID() {
 			return UUIDConverter.fromBase64Url(uuidBase64Url);
 		}
