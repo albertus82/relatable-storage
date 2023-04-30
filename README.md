@@ -14,7 +14,7 @@ Simple JDBC Filestore
 * This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being `FILENAME` a object key string of up to 1,024 characters with no constraints other than uniqueness, you can use common prefixes (like `foo/`, `bar/`) to organize your objects simulating a hierarchical structure. For more info, you can check the [Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) because the semantics are similar.
 * This library requires JDK 11 and depends on the [Spring Framework](https://spring.io/projects/spring-framework) but no Spring Context is actually needed (see the [sample Java code](#sample-java-code) below).
 
-| UUID_B64URL              | FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | COMPRESSED | ENCRYPTED | FILE_CONTENTS | CREATION_TIME           |
+| UUID_BASE64URL           | FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | COMPRESSED | ENCRYPTED | FILE_CONTENTS | CREATION_TIME           |
 | ------------------------ | -------- | -------------: | ----------------------- | ---------: | --------: | ------------- | ----------------------- |
 | `IKn6ATU7RVa-qbykef7BfQ` | foo.txt  |            123 | 2022-10-31 23:10:22,607 |          1 |         0 | (BLOB)        | 2022-10-31 23:10:22,610 |
 | `2WGTuBeQTu-iS5pUccAASQ` | bar.png  |           4567 | 2022-10-31 23:10:49,669 |          0 |         0 | (BLOB)        | 2022-10-31 23:10:49,672 |
@@ -36,7 +36,7 @@ Simple JDBC Filestore
 
 ```sql
 CREATE TABLE storage (
-    uuid_b64url      VARCHAR(22) NOT NULL PRIMARY KEY,
+    uuid_base64url   VARCHAR(22) NOT NULL PRIMARY KEY,
     filename         VARCHAR(1024) NOT NULL UNIQUE,
     content_length   NUMERIC(19, 0) /* NOT NULL DEFERRABLE INITIALLY DEFERRED */ CHECK (content_length >= 0),
     last_modified    TIMESTAMP NOT NULL,
