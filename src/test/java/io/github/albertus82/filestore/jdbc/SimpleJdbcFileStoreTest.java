@@ -94,13 +94,13 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testDatabase1() {
-		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "qwertyuiopasdfghjklzxc", "a", 1, "x".getBytes(), new Date(), true, false);
+		jdbcTemplate.update("INSERT INTO storage (uuid_b64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "1234567890123456789012", "a", 1, "x".getBytes(), new Date(), true, false);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
 	@Test
 	void testDatabase2() {
-		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "poiuytrewqlkjhgfdsamnb", "b", 2, "yz".getBytes(), new Date(), false, true);
+		jdbcTemplate.update("INSERT INTO storage (uuid_b64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "qwertyuiopasdfghjklzxc", "b", 2, "yz".getBytes(), new Date(), false, true);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 

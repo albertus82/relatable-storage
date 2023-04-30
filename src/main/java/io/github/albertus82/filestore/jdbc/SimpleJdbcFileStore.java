@@ -190,7 +190,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
-		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified, uuid_base64url FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified, uuid_b64url FROM ");
 		appendSchemaAndTableName(sb);
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
@@ -222,7 +222,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, uuid_base64url FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, uuid_b64url FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
@@ -444,7 +444,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb);
-		sb.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
+		sb.append(" (filename, last_modified, compressed, encrypted, uuid_b64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris)) {
