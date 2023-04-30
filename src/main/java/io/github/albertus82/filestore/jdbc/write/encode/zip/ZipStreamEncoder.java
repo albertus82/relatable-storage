@@ -18,7 +18,7 @@ import net.lingala.zip4j.model.enums.EncryptionMethod;
 
 /**
  * Stream encoder that reads bytes from an {@link InputStream}, deflates and
- * encrypts data, and writes them to an {@link OutputStream}.
+ * encrypts data, and finally writes them to an {@link OutputStream}.
  */
 public class ZipStreamEncoder implements IndirectStreamEncoder {
 
