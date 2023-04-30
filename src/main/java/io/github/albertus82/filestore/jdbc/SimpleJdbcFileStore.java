@@ -308,13 +308,13 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			this.lastModified = lastModified;
 		}
 
-		/** Returns the file name. */
+		/** Returns the resource key, that usually is the file name. */
 		@Override
 		public String getFilename() {
 			return fileName;
 		}
 
-		/** Returns the (uncompressed) file size. */
+		/** Returns the original (uncompressed) file size. */
 		@Override
 		public long contentLength() {
 			return contentLength;
