@@ -81,7 +81,7 @@ class CountingInputStream extends FilterInputStream {
 
 	@Override
 	public synchronized void reset() throws IOException {
-		if (!in.markSupported()) {
+		if (!super.markSupported()) {
 			throw new IOException("Mark not supported");
 		}
 		if (mark == null) {
