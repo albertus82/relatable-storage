@@ -201,7 +201,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testStoreListGetDeleteFromStream() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.NONE), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.NONE), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.MEDIUM) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
 					final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
@@ -239,7 +239,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.MEDIUM) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
 					final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("TestPassword0$".toCharArray());
@@ -277,7 +277,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testStoreListGetDeleteFromFile() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.LOW) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
 					final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
@@ -335,7 +335,7 @@ class SimpleJdbcFileStoreTest {
 		try {
 			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
 			final Path f = tempFile;
-			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor()).parallelStream().forEach(be -> {
+			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.HIGH)).parallelStream().forEach(be -> {
 				try {
 					for (final Compression compression : Compression.values()) {
 						for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
@@ -367,7 +367,7 @@ class SimpleJdbcFileStoreTest {
 						}
 					}
 				}
-				catch (IOException e) {
+				catch (final IOException e) {
 					throw new UncheckedIOException(e);
 				}
 				catch (final NoSuchAlgorithmException e) {
