@@ -47,6 +47,10 @@ import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.DirectBlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.FileBufferedBlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.MemoryBufferedBlobExtractor;
+import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
+import io.github.albertus82.filestore.jdbc.write.FileBufferedBinaryStreamProvider;
+import io.github.albertus82.filestore.jdbc.write.MemoryBufferedBinaryStreamProvider;
+import io.github.albertus82.filestore.jdbc.write.PipeBasedBinaryStreamProvider;
 
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
@@ -199,101 +203,27 @@ class SimpleJdbcFileStoreTest {
 	void testStoreListGetDeleteFromStream() throws IOException {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.NONE), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
-				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
-				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
-					store.store(new InputStreamResource(is), "myfile.txt");
-				}
-				final long timeAfter = System.currentTimeMillis();
-				final List<Resource> list = store.list();
-				Assertions.assertEquals(1, list.size());
-				final Resource r1 = list.get(0);
-				Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
-				Assertions.assertTrue(r1.exists());
-				try (final InputStream is = r1.getInputStream()) {
-					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
-					Assertions.assertEquals("myfile.txt", r1.getFilename());
-					Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
-				}
-				final Resource r2 = store.get(r1.getFilename());
-				Assertions.assertEquals(r1.contentLength(), r2.contentLength());
-				Assertions.assertTrue(r2.exists());
-				try (final InputStream is = r2.getInputStream()) {
-					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
-					Assertions.assertEquals(r1.getFilename(), r2.getFilename());
-					Assertions.assertEquals(r1.lastModified(), r2.lastModified());
-				}
-				store.delete("myfile.txt");
-				Assertions.assertFalse(r2.exists());
-				Assertions.assertThrows(NoSuchFileException.class, () -> r2.getInputStream());
-				Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
-				Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
-			}
-		}
-	}
-
-	@Test
-	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor() }) {
-			for (final Compression compression : Compression.values()) {
-				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("TestPassword0$".toCharArray());
-				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
-					store.store(new InputStreamResource(is), "myfile.txt");
-				}
-				final long timeAfter = System.currentTimeMillis();
-				final List<Resource> list = store.list();
-				Assertions.assertEquals(1, list.size());
-				final Resource r1 = list.get(0);
-				Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
-				Assertions.assertTrue(r1.exists());
-				try (final InputStream is = r1.getInputStream()) {
-					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
-					Assertions.assertEquals("myfile.txt", r1.getFilename());
-					Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
-				}
-				final Resource r2 = store.get(r1.getFilename());
-				Assertions.assertEquals(r1.contentLength(), r2.contentLength());
-				Assertions.assertTrue(r2.exists());
-				try (final InputStream is = r2.getInputStream()) {
-					Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
-					Assertions.assertEquals(r1.getFilename(), r2.getFilename());
-					Assertions.assertEquals(r1.lastModified(), r2.lastModified());
-				}
-				store.delete("myfile.txt");
-				Assertions.assertFalse(r2.exists());
-				Assertions.assertThrows(NoSuchFileException.class, () -> r2.getInputStream());
-				Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
-				Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
-			}
-		}
-	}
-
-	@Test
-	void testStoreListGetDeleteFromFile() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor() }) {
-			for (final Compression compression : Compression.values()) {
-				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
-				Path tempFile = null;
-				try {
-					tempFile = Files.createTempFile(null, null);
-					tempFile.toFile().deleteOnExit();
-					Files.writeString(tempFile, "asdfghjkl");
-					final BasicFileAttributes tempFileAttr = Files.readAttributes(tempFile, BasicFileAttributes.class);
-					store.store(new FileSystemResource(tempFile), "myfile.txt");
+				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
+					final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
+					try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
+						store.store(new InputStreamResource(is), "myfile.txt");
+					}
+					final long timeAfter = System.currentTimeMillis();
 					final List<Resource> list = store.list();
 					Assertions.assertEquals(1, list.size());
 					final Resource r1 = list.get(0);
-					Assertions.assertEquals("asdfghjkl".length(), r1.contentLength());
+					Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
 					Assertions.assertTrue(r1.exists());
 					try (final InputStream is = r1.getInputStream()) {
-						Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
-						Assertions.assertEquals(tempFileAttr.lastModifiedTime().toMillis(), r1.lastModified());
+						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
 					final Resource r2 = store.get(r1.getFilename());
 					Assertions.assertEquals(r1.contentLength(), r2.contentLength());
 					Assertions.assertTrue(r2.exists());
 					try (final InputStream is = r2.getInputStream()) {
-						Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
 						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
 					}
@@ -303,8 +233,88 @@ class SimpleJdbcFileStoreTest {
 					Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
 					Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
 				}
-				finally {
-					Files.deleteIfExists(tempFile);
+			}
+		}
+	}
+
+	@Test
+	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor() }) {
+			for (final Compression compression : Compression.values()) {
+				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
+					final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("TestPassword0$".toCharArray());
+					try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
+						store.store(new InputStreamResource(is), "myfile.txt");
+					}
+					final long timeAfter = System.currentTimeMillis();
+					final List<Resource> list = store.list();
+					Assertions.assertEquals(1, list.size());
+					final Resource r1 = list.get(0);
+					Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
+					Assertions.assertTrue(r1.exists());
+					try (final InputStream is = r1.getInputStream()) {
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertEquals("myfile.txt", r1.getFilename());
+						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
+					}
+					final Resource r2 = store.get(r1.getFilename());
+					Assertions.assertEquals(r1.contentLength(), r2.contentLength());
+					Assertions.assertTrue(r2.exists());
+					try (final InputStream is = r2.getInputStream()) {
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
+						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+					}
+					store.delete("myfile.txt");
+					Assertions.assertFalse(r2.exists());
+					Assertions.assertThrows(NoSuchFileException.class, () -> r2.getInputStream());
+					Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
+					Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
+				}
+			}
+		}
+	}
+
+	@Test
+	void testStoreListGetDeleteFromFile() throws IOException {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor() }) {
+			for (final Compression compression : Compression.values()) {
+				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
+					final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
+					Path tempFile = null;
+					try {
+						tempFile = Files.createTempFile(null, null);
+						tempFile.toFile().deleteOnExit();
+						Files.writeString(tempFile, "asdfghjkl");
+						final BasicFileAttributes tempFileAttr = Files.readAttributes(tempFile, BasicFileAttributes.class);
+						store.store(new FileSystemResource(tempFile), "myfile.txt");
+						final List<Resource> list = store.list();
+						Assertions.assertEquals(1, list.size());
+						final Resource r1 = list.get(0);
+						Assertions.assertEquals("asdfghjkl".length(), r1.contentLength());
+						Assertions.assertTrue(r1.exists());
+						try (final InputStream is = r1.getInputStream()) {
+							Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+							Assertions.assertEquals("myfile.txt", r1.getFilename());
+							Assertions.assertEquals(tempFileAttr.lastModifiedTime().toMillis(), r1.lastModified());
+						}
+						final Resource r2 = store.get(r1.getFilename());
+						Assertions.assertEquals(r1.contentLength(), r2.contentLength());
+						Assertions.assertTrue(r2.exists());
+						try (final InputStream is = r2.getInputStream()) {
+							Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+							Assertions.assertEquals(r1.getFilename(), r2.getFilename());
+							Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+						}
+						store.delete("myfile.txt");
+						Assertions.assertFalse(r2.exists());
+						Assertions.assertThrows(NoSuchFileException.class, () -> r2.getInputStream());
+						Assertions.assertThrows(NoSuchFileException.class, () -> store.get("myfile.txt"));
+						Assertions.assertThrows(NoSuchFileException.class, () -> store.delete("myfile.txt"));
+					}
+					finally {
+						Files.deleteIfExists(tempFile);
+					}
 				}
 			}
 		}
@@ -328,31 +338,33 @@ class SimpleJdbcFileStoreTest {
 			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor()).parallelStream().forEach(be -> {
 				try {
 					for (final Compression compression : Compression.values()) {
-						final String fileName = UUID.randomUUID().toString();
-						final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("testpass".toCharArray());
-						try (final InputStream is = Files.newInputStream(f)) {
-							Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
-						}
+						for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
+							final String fileName = UUID.randomUUID().toString();
+							final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("testpass".toCharArray());
+							try (final InputStream is = Files.newInputStream(f)) {
+								Assertions.assertDoesNotThrow(() -> store.store(new InputStreamResource(is), fileName));
+							}
 
-						final byte[] buffer = new byte[8192];
-						final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
-						try (final InputStream is = Files.newInputStream(f)) {
-							int bytesCount = 0;
-							while ((bytesCount = is.read(buffer)) != -1) {
-								digestSource.update(buffer, 0, bytesCount);
+							final byte[] buffer = new byte[8192];
+							final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
+							try (final InputStream is = Files.newInputStream(f)) {
+								int bytesCount = 0;
+								while ((bytesCount = is.read(buffer)) != -1) {
+									digestSource.update(buffer, 0, bytesCount);
+								}
 							}
-						}
-						final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-						final DatabaseResource dr = store.get(fileName);
-						try (final InputStream stored = dr.getInputStream()) {
-							int bytesCount = 0;
-							while ((bytesCount = stored.read(buffer)) != -1) {
-								digestStored.update(buffer, 0, bytesCount);
+							final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
+							final DatabaseResource dr = store.get(fileName);
+							try (final InputStream stored = dr.getInputStream()) {
+								int bytesCount = 0;
+								while ((bytesCount = stored.read(buffer)) != -1) {
+									digestStored.update(buffer, 0, bytesCount);
+								}
 							}
+							final byte[] sha256Source = digestSource.digest();
+							final byte[] sha256Stored = digestStored.digest();
+							Assertions.assertArrayEquals(sha256Source, sha256Stored);
 						}
-						final byte[] sha256Source = digestSource.digest();
-						final byte[] sha256Stored = digestStored.digest();
-						Assertions.assertArrayEquals(sha256Source, sha256Stored);
 					}
 				}
 				catch (IOException e) {
