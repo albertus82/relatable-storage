@@ -47,9 +47,9 @@ CREATE TABLE storage (
 ### Sample Java code
 
 ```java
-DataSource dataSource = new DriverManagerDataSource("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"); // replace with your connection string or connection pool object
+DataSource dataSource = new DriverManagerDataSource("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"); // replace with your connection string or connection pool
 SimpleFileStore storage = new SimpleJdbcFileStore(new JdbcTemplate(dataSource), "MY_DB_TABLE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
-storage.store(new PathResource("path/to/myFile.ext", "myStoredFile.ext"));
+storage.store(new PathResource("path/to/myFile.ext", "myStoredFile.ext")); // the last argument can be prefixed to simulate a hierarchical structure
 Resource resource = storage.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
 ```
