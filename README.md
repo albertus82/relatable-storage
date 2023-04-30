@@ -3,9 +3,12 @@ Simple JDBC Filestore
 [![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
 
-Basic RDBMS-based filestore with compression and encryption support.
+### Basic RDBMS-based filestore with compression and encryption support.
 
-The files are always stored internally in ZIP format (the compression level is customizable) in order to get CRC-32 check and AES encryption for free. This internal ZIP encoding is transparent for the client, so no manual unzip is needed.
+* The files are always stored internally in ZIP format in order to get CRC-32 check and AES encryption for free.
+   * The compression level is customizable from *no compression* to *best compression*.
+   * The internal ZIP encoding is transparent for the client, so no manual *unzip* is needed.
+* This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being the *filename* a simple string with no constraint but unicity, you can use common prefixes to organize your files simulating a hierarchical structure.
 
 ```sql
 CREATE TABLE storage (
