@@ -14,6 +14,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
@@ -148,6 +149,34 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.store(null, "y"));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.store(dr, null));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.store(null, null));
+
+		final SimpleJdbcFileStore s3 = new SimpleJdbcFileStore(jdbcTemplate, "StORaGe", fbbe);
+		Assertions.assertEquals("StORaGe", s3.getTable());
+		Assertions.assertEquals(Optional.empty(), s3.getSchema());
+		Assertions.assertEquals(Compression.NONE, s3.getCompression());
+		Assertions.assertEquals("AbC", s3.withSchema("AbC").getSchema().orElseThrow());
+		Assertions.assertEquals(Compression.MEDIUM, s3.withCompression(Compression.MEDIUM).getCompression());
+	}
+
+	@Test
+	void testCustomSchema() throws IOException {
+		jdbcTemplate.execute("CREATE SCHEMA qwerty");
+		try {
+			jdbcTemplate.execute("CREATE TABLE qwerty.asdfgh AS (SELECT * FROM storage WHERE 0=1)");
+			try {
+				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "ASDFGH", new FileBufferedBlobExtractor()).withCompression(Compression.LOW).withSchema("QWERTY");
+				Assertions.assertEquals(0, store.list().size());
+				final Resource toSave = new InputStreamResource(getClass().getResourceAsStream("10b.txt"));
+				store.store(toSave, "myfile.txt");
+				Assertions.assertEquals(1, store.list().size());
+			}
+			finally {
+				jdbcTemplate.execute("DROP TABLE qwerty.asdfgh");
+			}
+		}
+		finally {
+			jdbcTemplate.execute("DROP SCHEMA qwerty");
+		}
 	}
 
 	@Test

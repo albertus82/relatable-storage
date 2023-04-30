@@ -12,7 +12,7 @@
  * the License.
  */
 
-package io.github.albertus82.filestore.io;
+package io.github.albertus82.filestore.jdbc;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -24,23 +24,23 @@ import java.util.Objects;
  *
  * @author Chris Nokleberg
  */
-public final class CountingInputStream extends FilterInputStream {
+class CountingInputStream extends FilterInputStream {
 
 	private long count;
-	private long mark = -1;
+	private Long mark;
 
 	/**
 	 * Wraps another input stream, counting the number of bytes read.
 	 *
 	 * @param in the input stream to be wrapped
 	 */
-	public CountingInputStream(final InputStream in) {
-		super(Objects.requireNonNull(in));
+	CountingInputStream(final InputStream in) {
+		super(Objects.requireNonNull(in, "in must not be null"));
 	}
 
 	/**
 	 * Returns the number of bytes read.
-	 * 
+	 *
 	 * @return the number of bytes read
 	 */
 	public long getCount() {
@@ -49,7 +49,7 @@ public final class CountingInputStream extends FilterInputStream {
 
 	@Override
 	public int read() throws IOException {
-		final int result = in.read();
+		final int result = super.read();
 		if (result != -1) {
 			count++;
 		}
@@ -58,7 +58,7 @@ public final class CountingInputStream extends FilterInputStream {
 
 	@Override
 	public int read(final byte[] b, final int off, final int len) throws IOException {
-		final int result = in.read(b, off, len);
+		final int result = super.read(b, off, len);
 		if (result != -1) {
 			count += result;
 		}
@@ -67,14 +67,14 @@ public final class CountingInputStream extends FilterInputStream {
 
 	@Override
 	public long skip(final long n) throws IOException {
-		final long result = in.skip(n);
+		final long result = super.skip(n);
 		count += result;
 		return result;
 	}
 
 	@Override
 	public synchronized void mark(final int readlimit) {
-		in.mark(readlimit);
+		super.mark(readlimit);
 		mark = count;
 		// it's okay to mark even if mark isn't supported, as reset won't work
 	}
@@ -84,11 +84,10 @@ public final class CountingInputStream extends FilterInputStream {
 		if (!in.markSupported()) {
 			throw new IOException("Mark not supported");
 		}
-		if (mark == -1) {
+		if (mark == null) {
 			throw new IOException("Mark not set");
 		}
-
-		in.reset();
+		super.reset();
 		count = mark;
 	}
 

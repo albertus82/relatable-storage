@@ -37,7 +37,6 @@ import org.springframework.jdbc.support.lob.LobCreator;
 
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.io.Compression;
-import io.github.albertus82.filestore.io.CountingInputStream;
 import io.github.albertus82.filestore.jdbc.read.AbstractBlobAccessor;
 import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
