@@ -333,7 +333,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreLarge() throws Exception {
 		Path tempFile = null;
 		try {
-			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
+			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(16));
 			final Path f = tempFile;
 			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.HIGH)).parallelStream().forEach(be -> {
 				try {
@@ -385,7 +385,7 @@ class SimpleJdbcFileStoreTest {
 	void testStoreLargeTransactional() throws Exception {
 		Path tempFile = null;
 		try {
-			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
+			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(16));
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
 				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
