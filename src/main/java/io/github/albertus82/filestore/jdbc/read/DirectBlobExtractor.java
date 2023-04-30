@@ -33,8 +33,7 @@ public class DirectBlobExtractor implements BlobExtractor {
 	 * @param decoder the stream decoder
 	 */
 	public DirectBlobExtractor(final DirectStreamDecoder decoder) {
-		Objects.requireNonNull(decoder, "decoder must not be null");
-		this.decoder = decoder;
+		this.decoder = Objects.requireNonNull(decoder, "decoder must not be null");
 	}
 
 	@Override

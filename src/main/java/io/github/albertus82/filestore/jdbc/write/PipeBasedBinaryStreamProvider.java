@@ -61,9 +61,8 @@ public class PipeBasedBinaryStreamProvider implements BinaryStreamProvider {
 	 * @param encoder the stream encoder that will be used to to encode data
 	 */
 	protected PipeBasedBinaryStreamProvider(final int pipeSize, final IndirectStreamEncoder encoder) {
-		Objects.requireNonNull(encoder, "encoder must not be null");
+		this.encoder = Objects.requireNonNull(encoder, "encoder must not be null");
 		this.pipeSize = pipeSize;
-		this.encoder = encoder;
 	}
 
 	@Override

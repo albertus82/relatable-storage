@@ -444,7 +444,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	private long insert(final Resource resource, final String fileName) throws IOException {
-		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
+		final Long contentLength = resource.isOpen() ? null : resource.contentLength();
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb);
 		sb.append(" (filename, last_modified, compressed, encrypted, uuid_b64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
@@ -465,7 +465,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 					}
 				});
 			}
-			if (contentLength != -1 && cis.getCount() != contentLength) {
+			if (contentLength != null && contentLength.longValue() != cis.getCount()) {
 				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
 			}
 			return cis.getCount();

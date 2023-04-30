@@ -218,6 +218,19 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertEquals(2, store.list("*oo.txt", "bar.txt").size());
 		Assertions.assertEquals(6, store.list("*.txt", "bar.txt").size());
 		Assertions.assertEquals(1, store.list("*.d?t").size());
+
+		jdbcTemplate.execute("TRUNCATE TABLE storage");
+
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "firstDir/foo.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "firstDir/tax%.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "firstDir/taxi.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "firstDir/anotherDir/file.dat");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "secondDir/bar.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "secondDir/test1.txt");
+		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "secondDir/test2.txt");
+		Assertions.assertEquals(4, store.list("firstDir/*").size());
+		Assertions.assertEquals(3, store.list("secondDir/*").size());
+		Assertions.assertEquals(1, store.list("firstDir/anotherDir/*").size());
 	}
 
 	@Test

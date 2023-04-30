@@ -90,12 +90,9 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 	 * @param decoder the stream decoder used to decode the BLOB contents
 	 */
 	protected FileBufferedBlobExtractor(final Path directory, final Compression compression, final DirectStreamDecoder decoder) {
-		Objects.requireNonNull(directory, "directory must not be null");
-		Objects.requireNonNull(compression, "compression must not be null");
-		Objects.requireNonNull(decoder, "decoder must not be null");
-		this.directory = directory;
-		this.compression = compression;
-		this.decoder = decoder;
+		this.directory = Objects.requireNonNull(directory, "directory must not be null");
+		this.compression = Objects.requireNonNull(compression, "compression must not be null");
+		this.decoder = Objects.requireNonNull(decoder, "decoder must not be null");
 	}
 
 	@Override

@@ -26,6 +26,8 @@ import java.util.Objects;
  */
 class CountingInputStream extends FilterInputStream {
 
+	private static final byte EOF = -1;
+
 	private long count;
 	private Long mark;
 
@@ -50,7 +52,7 @@ class CountingInputStream extends FilterInputStream {
 	@Override
 	public int read() throws IOException {
 		final int result = super.read();
-		if (result != -1) {
+		if (result != EOF) {
 			count++;
 		}
 		return result;
@@ -59,7 +61,7 @@ class CountingInputStream extends FilterInputStream {
 	@Override
 	public int read(final byte[] b, final int off, final int len) throws IOException {
 		final int result = super.read(b, off, len);
-		if (result != -1) {
+		if (result != EOF) {
 			count += result;
 		}
 		return result;

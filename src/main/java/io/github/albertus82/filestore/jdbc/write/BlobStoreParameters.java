@@ -18,8 +18,7 @@ public class BlobStoreParameters {
 	 *        encryption)
 	 */
 	public BlobStoreParameters(final Compression compression, final char[] password) {
-		Objects.requireNonNull(compression, "compression must not be null");
-		this.compression = compression;
+		this.compression = Objects.requireNonNull(compression, "compression must not be null");
 		this.password = password;
 	}
 

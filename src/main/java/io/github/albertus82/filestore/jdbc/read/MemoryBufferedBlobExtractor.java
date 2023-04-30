@@ -67,10 +67,8 @@ public class MemoryBufferedBlobExtractor implements BlobExtractor {
 	 * @param decoder the stream decoder used to decode the BLOB contents
 	 */
 	protected MemoryBufferedBlobExtractor(final Compression compression, final DirectStreamDecoder decoder) {
-		Objects.requireNonNull(compression, "compression must not be null");
-		Objects.requireNonNull(decoder, "decoder must not be null");
-		this.compression = compression;
-		this.decoder = decoder;
+		this.compression = Objects.requireNonNull(compression, "compression must not be null");
+		this.decoder = Objects.requireNonNull(decoder, "decoder must not be null");
 	}
 
 	@Override

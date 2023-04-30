@@ -65,10 +65,8 @@ public class FileBufferedBinaryStreamProvider implements BinaryStreamProvider {
 	 * @param encoder the stream encoder that will be used to to encode data
 	 */
 	protected FileBufferedBinaryStreamProvider(final Path directory, final IndirectStreamEncoder encoder) {
-		Objects.requireNonNull(directory, "directory must not be null");
-		Objects.requireNonNull(encoder, "encoder must not be null");
-		this.directory = directory;
-		this.encoder = encoder;
+		this.directory = Objects.requireNonNull(directory, "directory must not be null");
+		this.encoder = Objects.requireNonNull(encoder, "encoder must not be null");
 	}
 
 	@Override
