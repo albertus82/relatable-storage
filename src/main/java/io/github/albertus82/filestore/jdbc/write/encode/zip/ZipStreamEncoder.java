@@ -3,9 +3,10 @@ package io.github.albertus82.filestore.jdbc.write.encode.zip;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Locale;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
-import java.util.UUID;
 
 import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.write.BlobStoreParameters;
@@ -21,6 +22,8 @@ import net.lingala.zip4j.model.enums.EncryptionMethod;
  * encrypts data, and finally writes them to an {@link OutputStream}.
  */
 public class ZipStreamEncoder implements IndirectStreamEncoder {
+
+	private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").withZone(ZoneOffset.UTC);
 
 	/** Default empty constructor. */
 	public ZipStreamEncoder() { /* Javadoc */ }
@@ -41,7 +44,7 @@ public class ZipStreamEncoder implements IndirectStreamEncoder {
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		final ZipParameters zp = new ZipParameters();
 		zp.setCompressionLevel(toZipCompressionLevel(parameters.getCompression()));
-		zp.setFileNameInZip(UUID.randomUUID().toString().replace("-", "").toLowerCase(Locale.ROOT));
+		zp.setFileNameInZip(dateTimeFormatter.format(Instant.now()) + ".dat"); // This file name will not be used anywhere
 		if (parameters.isEncryptionRequired()) {
 			zp.setEncryptFiles(true);
 			zp.setEncryptionMethod(EncryptionMethod.AES);
