@@ -196,7 +196,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testStoreListGetDeleteFromStream() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.NONE), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
 				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
 				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
@@ -232,7 +232,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testEncryptedStoreListGetDeleteFromStream() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
 				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression).withEncryption("TestPassword0$".toCharArray());
 				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
@@ -268,7 +268,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testStoreListGetDeleteFromFile() throws IOException {
-		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor() }) {
+		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor() }) {
 			for (final Compression compression : Compression.values()) {
 				final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", be).withCompression(compression);
 				Path tempFile = null;
@@ -324,7 +324,7 @@ class SimpleJdbcFileStoreTest {
 		try {
 			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(32));
 			final Path f = tempFile;
-			List.of(new FileBufferedBlobExtractor(), new MemoryBufferedBlobExtractor()).parallelStream().forEach(be -> {
+			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor()).parallelStream().forEach(be -> {
 				try {
 					for (final Compression compression : Compression.values()) {
 						final String fileName = UUID.randomUUID().toString();
