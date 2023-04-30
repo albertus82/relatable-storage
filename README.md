@@ -1,5 +1,7 @@
 Simple JDBC Filestore
 =====================
+
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/simple-jdbc-filestore)](https://mvnrepository.com/artifact/io.github.albertus82/simple-jdbc-filestore)
 [![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
 
@@ -34,7 +36,7 @@ Simple JDBC Filestore
 
 ```sql
 CREATE TABLE storage (
-    uuid_base64url   VARCHAR(22) NOT NULL PRIMARY KEY,
+    uuid_b64url      VARCHAR(22) NOT NULL PRIMARY KEY,
     filename         VARCHAR(1024) NOT NULL UNIQUE,
     content_length   NUMERIC(19, 0) /* NOT NULL DEFERRABLE INITIALLY DEFERRED */ CHECK (content_length >= 0),
     last_modified    TIMESTAMP NOT NULL,
@@ -54,3 +56,5 @@ storage.store(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // th
 Resource resource = storage.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
 ```
+
+See also [SampleCodeTest](src/test/java/io/github/albertus82/filestore/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
