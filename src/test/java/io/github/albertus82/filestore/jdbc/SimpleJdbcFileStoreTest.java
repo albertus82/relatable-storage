@@ -154,8 +154,10 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertEquals("StORaGe", s3.getTable());
 		Assertions.assertEquals(Optional.empty(), s3.getSchema());
 		Assertions.assertEquals(Compression.NONE, s3.getCompression());
+		Assertions.assertEquals(false, s3.isAlwaysQuotedIdentifiers());
 		Assertions.assertEquals("AbC", s3.withSchema("AbC").getSchema().orElseThrow());
 		Assertions.assertEquals(Compression.MEDIUM, s3.withCompression(Compression.MEDIUM).getCompression());
+		Assertions.assertEquals(true, s3.withAlwaysQuotedIdentifiers(true).isAlwaysQuotedIdentifiers());
 	}
 
 	@Test
@@ -181,7 +183,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testList() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH);
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH).withAlwaysQuotedIdentifiers(false);
 		Assertions.assertEquals(0, store.list().size());
 		final Resource toSave = new InputStreamResource(getClass().getResourceAsStream("10b.txt"));
 		store.store(toSave, "myfile.txt");
@@ -190,7 +192,7 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testListWithFilters() throws IOException {
-		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM)).withCompression(Compression.MEDIUM);
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM)).withAlwaysQuotedIdentifiers(true).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
 		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "foo.txt");
 		store.store(new InputStreamResource(getClass().getResourceAsStream("10b.txt")), "bar.txt");

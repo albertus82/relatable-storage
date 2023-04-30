@@ -58,17 +58,19 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	private final Compression compression;
 	private final String schema;
 	private final char[] password;
+	private final boolean alwaysQuotedIdentifiers;
 
 	/**
 	 * Creates a new instance based on a database table. All the parameters are
 	 * mandatory.
 	 *
 	 * @param jdbcOperations the JDBC executor
-	 * @param table the database table name (case sensitive)
+	 * @param table the database table name (see also
+	 *        {@link #withAlwaysQuotedIdentifiers(boolean)})
 	 * @param blobExtractor the BLOB extraction strategy
 	 */
 	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
-		this(jdbcOperations, table, blobExtractor, new PipeBasedBinaryStreamProvider(), Compression.NONE, null, null);
+		this(jdbcOperations, table, blobExtractor, new PipeBasedBinaryStreamProvider(), Compression.NONE, false, null, null);
 	}
 
 	/**
@@ -81,12 +83,15 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *        stored as BLOB (mandatory)
 	 * @param compression the data compression level (mandatory, use
 	 *        {@link Compression#NONE} to store uncompressed data).
+	 * @param alwaysQuotedIdentifiers when enabled, the database
+	 *        <strong>schema</strong> and <strong>table</strong> identifiers are
+	 *        always quoted.
 	 * @param schema the database schema name (can be null, so that no schema name
 	 *        will be included in the generated SQL).
 	 * @param password the encryption/decryption password (can be null, so that
 	 *        neither encryption nor decryption will be performed).
 	 */
-	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final String schema, final char[] password) {
+	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
@@ -100,6 +105,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		this.blobExtractor = blobExtractor;
 		this.binaryStreamProvider = binaryStreamProvider;
 		this.compression = compression;
+		this.alwaysQuotedIdentifiers = alwaysQuotedIdentifiers;
 		this.schema = schema;
 		this.password = password;
 	}
@@ -112,13 +118,27 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @return a new instance configured with the provided compression level.
 	 */
 	public SimpleJdbcFileStore withCompression(final Compression compression) {
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.schema, this.password);
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
+	}
+
+	/**
+	 * When enabled, the database <strong>schema</strong> and <strong>table</strong>
+	 * identifiers are always quoted.
+	 *
+	 * @param alwaysQuotedIdentifiers the database identifier quoting strategy
+	 *
+	 * @return a new instance configured with the provided database identifier
+	 *         quoting strategy.
+	 */
+	public SimpleJdbcFileStore withAlwaysQuotedIdentifiers(final boolean alwaysQuotedIdentifiers) {
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
 	 * Sets a custom database schema name.
 	 *
-	 * @param schema the database schema name (case sensitive)
+	 * @param schema the database schema name (see also
+	 *        {@link #withAlwaysQuotedIdentifiers(boolean)})
 	 *
 	 * @return a new instance configured with the provided schema name.
 	 */
@@ -127,7 +147,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		if (schema.isEmpty()) {
 			throw new IllegalArgumentException("schema must not be empty");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, schema, this.password);
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, schema, this.password);
 	}
 
 	/**
@@ -142,7 +162,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		if (password.length == 0) {
 			throw new IllegalArgumentException("password must not be empty");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.schema, password.clone());
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, password.clone());
 	}
 
 	/**
@@ -155,7 +175,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	public SimpleJdbcFileStore withBinaryStreamProvider(final BinaryStreamProvider binaryStreamProvider) {
 		Objects.requireNonNull(binaryStreamProvider, "binaryStreamProvider must not be null");
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.schema, this.password);
+		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -185,6 +205,17 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	public Compression getCompression() {
 		return compression;
+	}
+
+	/**
+	 * Returns {@code true} if the database identifiers are always quoted, otherwise
+	 * {@code false}.
+	 *
+	 * @return {@code true} if the database identifiers are always quoted, otherwise
+	 *         {@code false}.
+	 */
+	public boolean isAlwaysQuotedIdentifiers() {
+		return alwaysQuotedIdentifiers;
 	}
 
 	@Override
@@ -484,7 +515,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			return jdbcOperations.execute(new StatementCallback<String>() {
 				@Override
 				public String doInStatement(final Statement stmt) throws SQLException {
-					return stmt.enquoteIdentifier(identifier, true);
+					return stmt.enquoteIdentifier(identifier, alwaysQuotedIdentifiers);
 				}
 			});
 		}
