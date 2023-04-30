@@ -5,6 +5,8 @@ Simple JDBC Filestore
 
 Basic RDBMS-based filestore with compression and encryption support.
 
+The files are always stored internally in ZIP format (the compression level is customizable) in order to get CRC-32 check and AES encryption for free. This internal ZIP encoding is transparent for the client, so no manual unzip is needed.
+
 ```sql
 CREATE TABLE storage (
     filename         VARCHAR(255) NOT NULL PRIMARY KEY,
