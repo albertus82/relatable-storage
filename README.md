@@ -1,5 +1,7 @@
 Simple JDBC Filestore
 =====================
+
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/simple-jdbc-filestore)](https://search.maven.org/artifact/io.github.albertus82/simple-jdbc-filestore)
 [![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
 
