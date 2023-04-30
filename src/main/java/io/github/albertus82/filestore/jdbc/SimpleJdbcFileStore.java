@@ -3,6 +3,8 @@ package io.github.albertus82.filestore.jdbc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.sql.PreparedStatement;
@@ -11,9 +13,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Base64.Decoder;
+import java.util.Base64.Encoder;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -184,7 +190,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 
 	@Override
 	public List<Resource> list(final String... patterns) throws IOException {
-		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT filename, content_length, last_modified, uuid_base64url FROM ");
 		appendSchemaAndTableName(sb);
 		final List<Object> args = new ArrayList<>();
 		if (patterns != null && patterns.length > 0) {
@@ -206,7 +212,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			return jdbcOperations.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime()), args.toArray(new Object[args.size()]));
+			return jdbcOperations.query(sql, (rs, rowNum) -> new DatabaseResource(rs.getString(1), rs.getLong(2), rs.getTimestamp(3).getTime(), rs.getString(4)), args.toArray(new Object[args.size()]));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -216,14 +222,14 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	@Override
 	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified FROM ");
+		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, uuid_base64url FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
 			return jdbcOperations.query(sql, rs -> {
 				if (rs.next()) {
-					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime());
+					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), rs.getString(3));
 				}
 				else {
 					throw new EmptyResultDataAccessException(1);
@@ -300,12 +306,15 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private final String fileName;
 		private final long contentLength;
 		private final long lastModified;
+		private final String uuidBase64Url;
 
-		private DatabaseResource(final String fileName, final long contentLength, final long lastModified) {
+		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String uuidBase64Url) {
 			Objects.requireNonNull(fileName, "fileName must not be null");
+			Objects.requireNonNull(uuidBase64Url, "uuidBase64Url must not be null");
 			this.fileName = fileName;
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
+			this.uuidBase64Url = uuidBase64Url;
 		}
 
 		/** Returns the resource key, that usually is the file name. */
@@ -324,6 +333,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		@Override
 		public long lastModified() {
 			return lastModified;
+		}
+
+		/** Returns the UUID of the stored object */
+		public UUID getUUID() {
+			return UUIDConverter.fromBase64Url(uuidBase64Url);
 		}
 
 		/** Checks if the resource exists in the database. */
@@ -430,7 +444,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		final long contentLength = resource.isOpen() ? -1 : resource.contentLength();
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb);
-		sb.append(" (filename, last_modified, compressed, encrypted, file_contents) VALUES (?, ?, ?, ?, ?)");
+		sb.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris)) {
@@ -443,6 +457,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
 						ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
 						ps.setBoolean(++columnIndex, password != null);
+						ps.setString(++columnIndex, UUIDConverter.toBase64Url(UUID.randomUUID()));
 						lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
 					}
 				});
@@ -494,6 +509,23 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			logException(e, resource::toString);
 		}
 		return new Timestamp(System.currentTimeMillis());
+	}
+
+	static class UUIDConverter {
+
+		private static final Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+		private static final Decoder decoder = Base64.getUrlDecoder();
+
+		private UUIDConverter() {}
+
+		static UUID fromBase64Url(final String uuidBase64Url) {
+			final LongBuffer buf = ByteBuffer.wrap(decoder.decode(uuidBase64Url)).asLongBuffer();
+			return new UUID(buf.get(0), buf.get(1));
+		}
+
+		static String toBase64Url(final UUID uuid) {
+			return encoder.encodeToString(ByteBuffer.allocate(Long.BYTES * 2).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
+		}
 	}
 
 }

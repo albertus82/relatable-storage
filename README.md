@@ -12,11 +12,11 @@ Simple JDBC Filestore
 * This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being `FILENAME` a object key string of up to 1,024 characters with no constraints other than uniqueness, you can use common prefixes (like `foo/`, `bar/`) to organize your objects simulating a hierarchical structure. For more info, you can check the [Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) because the semantics are similar.
 * This library requires JDK 11 and depends on the [Spring Framework](https://spring.io/projects/spring-framework) but no Spring Context is actually needed (see the [sample Java code](#sample-java-code) below).
 
-| FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | COMPRESSED | ENCRYPTED | FILE_CONTENTS | CREATION_TIME           |
-| -------- | -------------: | ----------------------- | ---------: | --------: | ------------- | ----------------------- |
-| foo.txt  |            123 | 2022-10-31 23:10:22,607 |          1 |         0 | (BLOB)        | 2022-10-31 23:10:22,610 |
-| bar.png  |           4567 | 2022-10-31 23:10:49,669 |          0 |         0 | (BLOB)        | 2022-10-31 23:10:49,672 |
-| baz.zip  |          89012 | 2022-10-31 23:11:02,607 |          0 |         1 | (BLOB)        | 2022-10-31 23:11:02,610 |
+| UUID_BASE64URL         | FILENAME | CONTENT_LENGTH | LAST_MODIFIED           | COMPRESSED | ENCRYPTED | FILE_CONTENTS | CREATION_TIME           |
+| ---------------------- | -------- | -------------: | ----------------------- | ---------: | --------: | ------------- | ----------------------- |
+| IKn6ATU7RVa-qbykef7BfQ | foo.txt  |            123 | 2022-10-31 23:10:22,607 |          1 |         0 | (BLOB)        | 2022-10-31 23:10:22,610 |
+| 2WGTuBeQTu-iS5pUccAASQ | bar.png  |           4567 | 2022-10-31 23:10:49,669 |          0 |         0 | (BLOB)        | 2022-10-31 23:10:49,672 |
+| S2LzZ8f5S_6e5fT_p5N0Hw | baz.zip  |          89012 | 2022-10-31 23:11:02,607 |          0 |         1 | (BLOB)        | 2022-10-31 23:11:02,610 |
 
 ## Usage
 

@@ -43,6 +43,7 @@ import io.github.albertus82.filestore.TestConfig;
 import io.github.albertus82.filestore.TestUtils;
 import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
+import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.UUIDConverter;
 import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.DirectBlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.FileBufferedBlobExtractor;
@@ -93,14 +94,22 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testDatabase1() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?)", "a", 1, "x".getBytes(), new Date(), true, false);
+		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "qwertyuiopasdfghjklzxc", "a", 1, "x".getBytes(), new Date(), true, false);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
 	@Test
 	void testDatabase2() {
-		jdbcTemplate.update("INSERT INTO storage (filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?)", "b", 2, "yz".getBytes(), new Date(), false, true);
+		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "poiuytrewqlkjhgfdsamnb", "b", 2, "yz".getBytes(), new Date(), false, true);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
+	}
+
+	@Test
+	void testUUIDConverter() {
+		final UUID a = UUID.randomUUID();
+		final String s = UUIDConverter.toBase64Url(a);
+		final UUID b = UUIDConverter.fromBase64Url(s);
+		Assertions.assertEquals(a, b);
 	}
 
 	@Test
@@ -364,6 +373,7 @@ class SimpleJdbcFileStoreTest {
 							final byte[] sha256Source = digestSource.digest();
 							final byte[] sha256Stored = digestStored.digest();
 							Assertions.assertArrayEquals(sha256Source, sha256Stored);
+							Assertions.assertNotNull(dr.getUUID());
 						}
 					}
 				}
@@ -412,6 +422,7 @@ class SimpleJdbcFileStoreTest {
 				final byte[] sha256Source = digestSource.digest();
 				final byte[] sha256Stored = digestStored.digest();
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
+				Assertions.assertNotNull(dr.getUUID());
 			}
 		}
 		finally {
