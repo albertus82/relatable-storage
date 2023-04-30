@@ -54,3 +54,5 @@ storage.store(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // th
 Resource resource = storage.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
 ```
+
+See also [SampleCodeTest](src/test/java/io/github/albertus82/filestore/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
