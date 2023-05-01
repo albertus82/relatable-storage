@@ -10,8 +10,8 @@ import java.util.UUID;
 /**
  * {@link UUID} encoding and decoding utilities.
  *
- * @see <a href="https://datatracker.ietf.org/doc/html/rfc4648">RFC 4648 - The
- *      Base16, Base32, and Base64 Data Encodings</a>
+ * @see <a href="https://www.ietf.org/rfc/rfc4648.txt">RFC 4648 - The Base16,
+ *      Base32, and Base64 Data Encodings</a>
  */
 public class UUIDConverter {
 
