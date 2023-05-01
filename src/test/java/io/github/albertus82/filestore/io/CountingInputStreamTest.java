@@ -161,6 +161,7 @@ class CountingInputStreamTest {
 	void testMarkReset() throws IOException {
 		final String text = "Hello World!";
 		try (CountingInputStream cis = new CountingInputStream(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)))) {
+			assertThrows(IOException.class, () -> cis.reset());
 
 			final byte[] result = new byte[text.length()];
 
