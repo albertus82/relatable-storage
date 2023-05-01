@@ -3,8 +3,6 @@ package io.github.albertus82.filestore.jdbc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
-import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.sql.PreparedStatement;
@@ -13,9 +11,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Base64.Decoder;
-import java.util.Base64.Encoder;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,11 +32,13 @@ import org.springframework.jdbc.support.lob.LobCreator;
 
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.io.Compression;
+import io.github.albertus82.filestore.io.CountingInputStream;
 import io.github.albertus82.filestore.jdbc.read.AbstractBlobAccessor;
 import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.BlobStoreParameters;
 import io.github.albertus82.filestore.jdbc.write.PipeBasedBinaryStreamProvider;
+import io.github.albertus82.filestore.util.UUIDConverter;
 
 /** Basic RDBMS-based implementation of a filestore. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
@@ -543,23 +540,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			logException(e, resource::toString);
 		}
 		return new Timestamp(System.currentTimeMillis());
-	}
-
-	static class UUIDConverter {
-
-		private static final Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-		private static final Decoder decoder = Base64.getUrlDecoder();
-
-		private UUIDConverter() {}
-
-		static UUID fromBase64Url(final String uuidBase64Url) {
-			final LongBuffer buf = ByteBuffer.wrap(decoder.decode(uuidBase64Url)).asLongBuffer();
-			return new UUID(buf.get(0), buf.get(1));
-		}
-
-		static String toBase64Url(final UUID uuid) {
-			return encoder.encodeToString(ByteBuffer.allocate(Long.BYTES * 2).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
-		}
 	}
 
 }

@@ -44,7 +44,6 @@ import io.github.albertus82.filestore.TestConfig;
 import io.github.albertus82.filestore.TestUtils;
 import io.github.albertus82.filestore.io.Compression;
 import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.DatabaseResource;
-import io.github.albertus82.filestore.jdbc.SimpleJdbcFileStore.UUIDConverter;
 import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.DirectBlobExtractor;
 import io.github.albertus82.filestore.jdbc.read.FileBufferedBlobExtractor;
@@ -95,22 +94,14 @@ class SimpleJdbcFileStoreTest {
 
 	@Test
 	void testDatabase1() {
-		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "1234567890123456789012", "a", 1, "x".getBytes(), new Date(), true, false);
+		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "1234567890123456789012", "a", 1, "x".getBytes(StandardCharsets.UTF_8), new Date(), true, false);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
 	}
 
 	@Test
 	void testDatabase2() {
-		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "qwertyuiopasdfghjklzxc", "b", 2, "yz".getBytes(), new Date(), false, true);
+		jdbcTemplate.update("INSERT INTO storage (uuid_base64url, filename, content_length, file_contents, last_modified, encrypted, compressed) VALUES (?, ?, ?, ?, ?, ?, ?)", "qwertyuiopasdfghjklzxc", "b", 2, "yz".getBytes(StandardCharsets.UTF_8), new Date(), false, true);
 		Assertions.assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage", int.class));
-	}
-
-	@Test
-	void testUUIDConverter() {
-		final UUID a = UUID.randomUUID();
-		final String s = UUIDConverter.toBase64Url(a);
-		final UUID b = UUIDConverter.fromBase64Url(s);
-		Assertions.assertEquals(a, b);
 	}
 
 	@Test
@@ -268,7 +259,7 @@ class SimpleJdbcFileStoreTest {
 					Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
 					Assertions.assertTrue(r1.exists());
 					try (final InputStream is = r1.getInputStream()) {
-						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
@@ -276,7 +267,7 @@ class SimpleJdbcFileStoreTest {
 					Assertions.assertEquals(r1.contentLength(), r2.contentLength());
 					Assertions.assertTrue(r2.exists());
 					try (final InputStream is = r2.getInputStream()) {
-						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
 					}
@@ -306,7 +297,7 @@ class SimpleJdbcFileStoreTest {
 					Assertions.assertEquals("qwertyuiop".length(), r1.contentLength());
 					Assertions.assertTrue(r1.exists());
 					try (final InputStream is = r1.getInputStream()) {
-						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
@@ -314,7 +305,7 @@ class SimpleJdbcFileStoreTest {
 					Assertions.assertEquals(r1.contentLength(), r2.contentLength());
 					Assertions.assertTrue(r2.exists());
 					try (final InputStream is = r2.getInputStream()) {
-						Assertions.assertArrayEquals("qwertyuiop".getBytes(), is.readAllBytes());
+						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
 					}
@@ -347,7 +338,7 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertEquals("asdfghjkl".length(), r1.contentLength());
 						Assertions.assertTrue(r1.exists());
 						try (final InputStream is = r1.getInputStream()) {
-							Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+							Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 							Assertions.assertEquals("myfile.txt", r1.getFilename());
 							Assertions.assertEquals(tempFileAttr.lastModifiedTime().toMillis(), r1.lastModified());
 						}
@@ -355,7 +346,7 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertEquals(r1.contentLength(), r2.contentLength());
 						Assertions.assertTrue(r2.exists());
 						try (final InputStream is = r2.getInputStream()) {
-							Assertions.assertArrayEquals("asdfghjkl".getBytes(), is.readAllBytes());
+							Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 							Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 							Assertions.assertEquals(r1.lastModified(), r2.lastModified());
 						}
