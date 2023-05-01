@@ -18,7 +18,7 @@ public interface SimpleFileStore {
 	 *        and {@code ?} wildcards (optional)
 	 *
 	 * @return a list of objects referencing the files matching the provided pattern
-	 *         (all files if no pattern is provided)
+	 *         (or all if no pattern is provided)
 	 *
 	 * @throws IOException if an I/O error occurs
 	 */
