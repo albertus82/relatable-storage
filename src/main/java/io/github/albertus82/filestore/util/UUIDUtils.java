@@ -8,17 +8,19 @@ import java.util.Base64.Encoder;
 import java.util.UUID;
 
 /**
- * {@link UUID} encoding and decoding utilities.
+ * Utility methods for manipulating {@link UUID}s.
  *
+ * @see <a href="https://www.ietf.org/rfc/rfc4122.txt">RFC 4122 - A Universally
+ *      Unique IDentifier (UUID) URN Namespace</a>
  * @see <a href="https://www.ietf.org/rfc/rfc4648.txt">RFC 4648 - The Base16,
  *      Base32, and Base64 Data Encodings</a>
  */
-public class UUIDConverter {
+public class UUIDUtils {
 
 	private static final Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 	private static final Decoder decoder = Base64.getUrlDecoder();
 
-	private UUIDConverter() {}
+	private UUIDUtils() {}
 
 	/**
 	 * Decodes a <strong>base64url</strong> encoded {@link UUID} object into a new

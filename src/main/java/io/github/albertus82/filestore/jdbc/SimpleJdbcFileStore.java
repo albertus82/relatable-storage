@@ -39,7 +39,7 @@ import io.github.albertus82.filestore.jdbc.read.BlobExtractor;
 import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.BlobStoreParameters;
 import io.github.albertus82.filestore.jdbc.write.PipeBasedBinaryStreamProvider;
-import io.github.albertus82.filestore.util.UUIDConverter;
+import io.github.albertus82.filestore.util.UUIDUtils;
 
 /** Basic RDBMS-based implementation of a filestore. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
@@ -367,7 +367,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		 * @return the UUID of the resource.
 		 */
 		public UUID getUUID() {
-			return UUIDConverter.fromBase64Url(uuidBase64Url);
+			return UUIDUtils.fromBase64Url(uuidBase64Url);
 		}
 
 		/**
@@ -501,7 +501,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 						ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
 						ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
 						ps.setBoolean(++columnIndex, password != null);
-						ps.setString(++columnIndex, UUIDConverter.toBase64Url(UUID.randomUUID()));
+						ps.setString(++columnIndex, UUIDUtils.toBase64Url(UUID.randomUUID()));
 						lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
 					}
 				});
