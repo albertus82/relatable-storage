@@ -373,16 +373,18 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 
 		/**
-		 * Returns a new {@link URI} containing the {@link UUID} of the stored object,
-		 * encoded as <strong>base64url</strong> string.
+		 * Returns a new {@link URI} containing the {@link UUID} of the stored object as
+		 * URN.
 		 *
-		 * @return a new URI containing the UUID of the stored object, encoded as
-		 *         <strong>base64url</strong> string, e.g.
-		 *         {@code S2LzZ8f5S_6e5fT_p5N0Hw}
+		 * @return a new URI containing the UUID of the stored objecd as URN, e.g.
+		 *         {@code urn:uuid:c269fe12-5102-4a38-8725-ed2fd29c32be}
+		 *
+		 * @see <a href="https://www.ietf.org/rfc/rfc4122.txt">RFC 4122 - A Universally
+		 *      Unique IDentifier (UUID) URN Namespace</a>
 		 */
 		@Override
 		public URI getURI() {
-			return URI.create(uuidBase64Url);
+			return URI.create("urn:uuid:" + getUUID());
 		}
 
 		/** Checks if the resource exists in the database. */

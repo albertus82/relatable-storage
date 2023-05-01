@@ -52,7 +52,6 @@ import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.FileBufferedBinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.MemoryBufferedBinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.PipeBasedBinaryStreamProvider;
-import io.github.albertus82.filestore.util.UUIDConverter;
 
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
@@ -263,7 +262,9 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
 						Assertions.assertNotNull(r1.getURI());
-						Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
+						final String uriStr = r1.getURI().toString();
+						Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
+						Assertions.assertDoesNotThrow(() -> UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
 					final Resource r2 = store.get(r1.getFilename());
@@ -304,7 +305,9 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
 						Assertions.assertNotNull(r1.getURI());
-						Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
+						final String uriStr = r1.getURI().toString();
+						Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
+						Assertions.assertDoesNotThrow(() -> UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
 					final Resource r2 = store.get(r1.getFilename());
@@ -348,7 +351,9 @@ class SimpleJdbcFileStoreTest {
 							Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 							Assertions.assertEquals("myfile.txt", r1.getFilename());
 							Assertions.assertNotNull(r1.getURI());
-							Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
+							final String uriStr = r1.getURI().toString();
+							Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
+							Assertions.assertDoesNotThrow(() -> UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
 							Assertions.assertEquals(tempFileAttr.lastModifiedTime().toMillis(), r1.lastModified());
 						}
 						final Resource r2 = store.get(r1.getFilename());
@@ -420,7 +425,9 @@ class SimpleJdbcFileStoreTest {
 							Assertions.assertArrayEquals(sha256Source, sha256Stored);
 							Assertions.assertNotNull(dr.getUUID());
 							Assertions.assertNotNull(dr.getURI());
-							Assertions.assertEquals(UUIDConverter.toBase64Url(dr.getUUID()), dr.getURI().toString());
+							final String uriStr = dr.getURI().toString();
+							Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
+							Assertions.assertEquals(dr.getUUID(), UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
 						}
 					}
 				}
@@ -471,7 +478,9 @@ class SimpleJdbcFileStoreTest {
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
 				Assertions.assertNotNull(dr.getUUID());
 				Assertions.assertNotNull(dr.getURI());
-				Assertions.assertEquals(UUIDConverter.toBase64Url(dr.getUUID()), dr.getURI().toString());
+				final String uriStr = dr.getURI().toString();
+				Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
+				Assertions.assertEquals(dr.getUUID(), UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
 			}
 		}
 		finally {
