@@ -337,12 +337,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		private final String uuidBase64Url;
 
 		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String uuidBase64Url) {
-			Objects.requireNonNull(fileName, "fileName must not be null");
-			Objects.requireNonNull(uuidBase64Url, "uuidBase64Url must not be null");
-			this.fileName = fileName;
+			this.fileName = Objects.requireNonNull(fileName, "fileName must not be null");
+			this.uuidBase64Url = Objects.requireNonNull(uuidBase64Url, "uuidBase64Url must not be null");
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
-			this.uuidBase64Url = uuidBase64Url;
 		}
 
 		/** Returns the resource key, that usually is the file name. */
@@ -364,19 +362,18 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 
 		/**
-		 * Returns the {@link UUID} of the stored object.
+		 * Returns the {@link UUID} of the resource.
 		 *
-		 * @return the UUID of the stored object.
+		 * @return the UUID of the resource.
 		 */
 		public UUID getUUID() {
 			return UUIDConverter.fromBase64Url(uuidBase64Url);
 		}
 
 		/**
-		 * Returns a new {@link URI} containing the {@link UUID} of the stored object as
-		 * URN.
+		 * Returns a new {@link URI} containing the {@link UUID} of the resource as URN.
 		 *
-		 * @return a new URI containing the UUID of the stored objecd as URN, e.g.
+		 * @return a new URI containing the UUID of the resource as URN, e.g.
 		 *         {@code urn:uuid:c269fe12-5102-4a38-8725-ed2fd29c32be}
 		 *
 		 * @see <a href="https://www.ietf.org/rfc/rfc4122.txt">RFC 4122 - A Universally
