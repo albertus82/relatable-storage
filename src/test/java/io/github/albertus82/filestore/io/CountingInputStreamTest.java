@@ -157,4 +157,26 @@ class CountingInputStreamTest {
 		}
 	}
 
+	@Test
+	void testMarkReset() throws IOException {
+		final String text = "Hello World!";
+		try (CountingInputStream cis = new CountingInputStream(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)))) {
+
+			final byte[] result = new byte[text.length()];
+
+			cis.read(result, 0, 3);
+			cis.mark(text.length());
+
+			assertEquals(3, cis.getCount());
+
+			final int n = cis.read(result);
+			assertEquals(-1, cis.read());
+			assertEquals(text.length() - 3, n);
+			assertEquals(text.length(), cis.getCount());
+
+			cis.reset();
+			assertEquals(3, cis.getCount());
+		}
+	}
+
 }
