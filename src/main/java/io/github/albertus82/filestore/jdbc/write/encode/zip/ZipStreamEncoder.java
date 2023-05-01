@@ -30,8 +30,8 @@ public class ZipStreamEncoder implements IndirectStreamEncoder {
 
 	@Override
 	public void encodeStream(final InputStream in, final OutputStream out, final BlobStoreParameters parameters) throws IOException {
-		Objects.requireNonNull(in, "in must not be null");
-		Objects.requireNonNull(out, "out must not be null");
+		Objects.requireNonNull(in, "InputStream must not be null");
+		Objects.requireNonNull(out, "OutputStream must not be null");
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		try (final ZipOutputStream zos = parameters.isEncryptionRequired() ? new ZipOutputStream(out, parameters.getPassword()) : new ZipOutputStream(out)) {
 			zos.putNextEntry(toZipParameters(parameters));

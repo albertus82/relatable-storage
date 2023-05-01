@@ -22,7 +22,7 @@ public class ZipStreamDecoder implements DirectStreamDecoder {
 
 	@Override
 	public ZipInputStream decodeStream(final InputStream in, final BlobAccessor blobAccessor) {
-		Objects.requireNonNull(in, "in must not be null");
+		Objects.requireNonNull(in, "InputStream must not be null");
 		Objects.requireNonNull(blobAccessor, "blobAccessor must not be null");
 		final ZipInputStream zis = blobAccessor.isEncrypted() ? new ZipInputStream(in, blobAccessor.getPassword()) : new ZipInputStream(in);
 		try {

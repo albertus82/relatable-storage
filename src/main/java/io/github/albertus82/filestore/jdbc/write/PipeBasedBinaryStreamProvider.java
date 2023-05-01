@@ -67,7 +67,7 @@ public class PipeBasedBinaryStreamProvider implements BinaryStreamProvider {
 
 	@Override
 	public InputStream getContentStream(final InputStream in, final BlobStoreParameters parameters) throws IOException {
-		Objects.requireNonNull(in, "in must not be null");
+		Objects.requireNonNull(in, "InputStream must not be null");
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		final PipedInputStream pis = new PipedInputStream(pipeSize); // NOSONAR Use try-with-resources or close this "PipedInputStream" in a "finally" clause. Resources should be closed (java:S2095)
 		final PipedOutputStream pos = new PipedOutputStream(pis); // NOSONAR Use try-with-resources or close this "PipedInputStream" in a "finally" clause. Resources should be closed (java:S2095)

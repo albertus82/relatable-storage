@@ -41,7 +41,7 @@ public class MemoryBufferedBinaryStreamProvider implements BinaryStreamProvider 
 
 	@Override
 	public InputStream getContentStream(final InputStream in, final BlobStoreParameters parameters) throws IOException {
-		Objects.requireNonNull(in, "in must not be null");
+		Objects.requireNonNull(in, "InputStream must not be null");
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			encoder.encodeStream(in, out, parameters);

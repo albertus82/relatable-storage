@@ -71,7 +71,7 @@ public class FileBufferedBinaryStreamProvider implements BinaryStreamProvider {
 
 	@Override
 	public InputStream getContentStream(final InputStream in, final BlobStoreParameters parameters) throws IOException {
-		Objects.requireNonNull(in, "in must not be null");
+		Objects.requireNonNull(in, "InputStream must not be null");
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		final Path bufferFile = Files.createTempFile(Files.createDirectories(directory), null, null);
 		return getContentStream(in, parameters, bufferFile);
