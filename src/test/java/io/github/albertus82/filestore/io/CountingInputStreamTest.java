@@ -106,24 +106,6 @@ class CountingInputStreamTest {
 	}
 
 	@Test
-	void testResetting() throws Exception {
-		final String text = "A piece of text";
-		final byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-		final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-		try (CountingInputStream cis = new CountingInputStream(bais)) {
-
-			final byte[] result = new byte[bytes.length];
-
-			int found = cis.read(result, 0, 5);
-			assertEquals(found, cis.getCount());
-
-			final long count = cis.resetCount();
-			found = cis.read(result, 6, 5);
-			assertEquals(found, count);
-		}
-	}
-
-	@Test
 	void testSkipping() throws IOException {
 		final String text = "Hello World!";
 		try (CountingInputStream cis = new CountingInputStream(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)))) {

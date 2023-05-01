@@ -24,8 +24,9 @@ import java.util.Objects;
 /**
  * An {@link InputStream} that counts the number of bytes read.
  * <p>
- * Inspired by the homonymous classes contained in <em>Google Guava</em> and
- * <em>Apache Commons IO</em> libraries. Many thanks to the original authors.
+ * Inspired by the homonymous classes contained in <strong>Google Guava</strong>
+ * and <strong>Apache Commons IO</strong> libraries. Many thanks to the original
+ * authors.
  *
  * @see <a href="https://github.com/google/guava">Google Guava</a>
  * @see <a href="https://commons.apache.org/io/">Apache Commons IO</a>
@@ -53,17 +54,6 @@ public class CountingInputStream extends FilterInputStream {
 	 */
 	public long getCount() {
 		return count;
-	}
-
-	/**
-	 * Set the byte count back to zero.
-	 *
-	 * @return the count previous to resetting.
-	 */
-	public synchronized long resetCount() {
-		final long prev = count;
-		count = 0;
-		return prev;
 	}
 
 	@Override
