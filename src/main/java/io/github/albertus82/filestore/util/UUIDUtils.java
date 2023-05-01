@@ -12,8 +12,6 @@ import java.util.UUID;
  *
  * @see <a href="https://www.ietf.org/rfc/rfc4122.txt">RFC 4122 - A Universally
  *      Unique IDentifier (UUID) URN Namespace</a>
- * @see <a href="https://www.ietf.org/rfc/rfc4648.txt">RFC 4648 - The Base16,
- *      Base32, and Base64 Data Encodings</a>
  */
 public class UUIDUtils {
 
@@ -35,6 +33,8 @@ public class UUIDUtils {
 	 *         <strong>base64url</strong> scheme as defined in RFC 4648.
 	 *
 	 * @see #toBase64Url(UUID)
+	 * @see <a href="https://www.ietf.org/rfc/rfc4648.txt">RFC 4648 - The Base16,
+	 *      Base32, and Base64 Data Encodings</a>
 	 */
 	public static UUID fromBase64Url(final String encodedUUID) {
 		final LongBuffer buf = ByteBuffer.wrap(decoder.decode(encodedUUID)).asLongBuffer();
@@ -51,6 +51,8 @@ public class UUIDUtils {
 	 *         characters, e.g. {@code S2LzZ8f5S_6e5fT_p5N0Hw}
 	 *
 	 * @see #fromBase64Url(String)
+	 * @see <a href="https://www.ietf.org/rfc/rfc4648.txt">RFC 4648 - The Base16,
+	 *      Base32, and Base64 Data Encodings</a>
 	 */
 	public static String toBase64Url(final UUID uuid) {
 		return encoder.encodeToString(ByteBuffer.allocate(Long.BYTES * 2).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
