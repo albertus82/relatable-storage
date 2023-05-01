@@ -80,9 +80,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *        stored as BLOB (mandatory)
 	 * @param compression the data compression level (mandatory, use
 	 *        {@link Compression#NONE} to store uncompressed data).
-	 * @param alwaysQuotedIdentifiers when enabled, the database
-	 *        <strong>schema</strong> and <strong>table</strong> identifiers are
-	 *        always quoted.
+	 * @param alwaysQuotedIdentifiers indicates if {@code schema} and {@code table}
+	 *        SQL identifiers should be always enquoted
 	 * @param schema the database schema name (can be null, so that no schema name
 	 *        will be included in the generated SQL).
 	 * @param password the encryption/decryption password (can be null, so that
@@ -119,10 +118,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	/**
-	 * When enabled, the database <strong>schema</strong> and <strong>table</strong>
-	 * identifiers are always quoted.
+	 * When enabled, {@code schema} and {@code table} SQL identifiers are always
+	 * quoted.
 	 *
-	 * @param alwaysQuotedIdentifiers the database identifier quoting strategy
+	 * @param alwaysQuotedIdentifiers indicates if {@code schema} and {@code table}
+	 *        SQL identifiers should be always enquoted
 	 *
 	 * @return a new instance configured with the provided database identifier
 	 *         quoting strategy.
@@ -205,11 +205,11 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	/**
-	 * Returns {@code true} if the database identifiers are always quoted, otherwise
-	 * {@code false}.
+	 * Returns {@code true} if {@code schema} and {@code table} SQL identifiers are
+	 * always quoted, otherwise {@code false}.
 	 *
-	 * @return {@code true} if the database identifiers are always quoted, otherwise
-	 *         {@code false}.
+	 * @return {@code true} if {@code schema} and {@code table} SQL identifiers are
+	 *         always quoted, otherwise {@code false}.
 	 */
 	public boolean isAlwaysQuotedIdentifiers() {
 		return alwaysQuotedIdentifiers;

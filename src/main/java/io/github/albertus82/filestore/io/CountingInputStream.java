@@ -56,7 +56,7 @@ public class CountingInputStream extends FilterInputStream {
 	}
 
 	/**
-	 * Set the byte count back to 0.
+	 * Set the byte count back to zero.
 	 *
 	 * @return the count previous to resetting.
 	 */
