@@ -52,6 +52,7 @@ import io.github.albertus82.filestore.jdbc.write.BinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.FileBufferedBinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.MemoryBufferedBinaryStreamProvider;
 import io.github.albertus82.filestore.jdbc.write.PipeBasedBinaryStreamProvider;
+import io.github.albertus82.filestore.util.UUIDConverter;
 
 @SpringJUnitConfig(TestConfig.class)
 class SimpleJdbcFileStoreTest {
@@ -261,6 +262,8 @@ class SimpleJdbcFileStoreTest {
 					try (final InputStream is = r1.getInputStream()) {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
+						Assertions.assertNotNull(r1.getURI());
+						Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
 					final Resource r2 = store.get(r1.getFilename());
@@ -270,6 +273,7 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+						Assertions.assertEquals(r1.getURI(), r2.getURI());
 					}
 					store.delete("myfile.txt");
 					Assertions.assertFalse(r2.exists());
@@ -299,6 +303,8 @@ class SimpleJdbcFileStoreTest {
 					try (final InputStream is = r1.getInputStream()) {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals("myfile.txt", r1.getFilename());
+						Assertions.assertNotNull(r1.getURI());
+						Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
 						Assertions.assertTrue(timeAfter - r1.lastModified() < TimeUnit.SECONDS.toMillis(10));
 					}
 					final Resource r2 = store.get(r1.getFilename());
@@ -308,6 +314,7 @@ class SimpleJdbcFileStoreTest {
 						Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 						Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 						Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+						Assertions.assertEquals(r1.getURI(), r2.getURI());
 					}
 					store.delete("myfile.txt");
 					Assertions.assertFalse(r2.exists());
@@ -340,6 +347,8 @@ class SimpleJdbcFileStoreTest {
 						try (final InputStream is = r1.getInputStream()) {
 							Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 							Assertions.assertEquals("myfile.txt", r1.getFilename());
+							Assertions.assertNotNull(r1.getURI());
+							Assertions.assertDoesNotThrow(() -> UUIDConverter.fromBase64Url(r1.getURI().toString()));
 							Assertions.assertEquals(tempFileAttr.lastModifiedTime().toMillis(), r1.lastModified());
 						}
 						final Resource r2 = store.get(r1.getFilename());
@@ -349,6 +358,7 @@ class SimpleJdbcFileStoreTest {
 							Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.UTF_8), is.readAllBytes());
 							Assertions.assertEquals(r1.getFilename(), r2.getFilename());
 							Assertions.assertEquals(r1.lastModified(), r2.lastModified());
+							Assertions.assertEquals(r1.getURI(), r2.getURI());
 						}
 						store.delete("myfile.txt");
 						Assertions.assertFalse(r2.exists());
@@ -409,6 +419,8 @@ class SimpleJdbcFileStoreTest {
 							final byte[] sha256Stored = digestStored.digest();
 							Assertions.assertArrayEquals(sha256Source, sha256Stored);
 							Assertions.assertNotNull(dr.getUUID());
+							Assertions.assertNotNull(dr.getURI());
+							Assertions.assertEquals(UUIDConverter.toBase64Url(dr.getUUID()), dr.getURI().toString());
 						}
 					}
 				}
@@ -458,6 +470,8 @@ class SimpleJdbcFileStoreTest {
 				final byte[] sha256Stored = digestStored.digest();
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
 				Assertions.assertNotNull(dr.getUUID());
+				Assertions.assertNotNull(dr.getURI());
+				Assertions.assertEquals(UUIDConverter.toBase64Url(dr.getUUID()), dr.getURI().toString());
 			}
 		}
 		finally {

@@ -25,7 +25,7 @@ public class UUIDConverter {
 	 * UUID object.
 	 *
 	 * @param encodedUUID the string representing the UUID to decode, e.g.
-	 *        {@code IKn6ATU7RVa-qbykef7BfQ}
+	 *        {@code S2LzZ8f5S_6e5fT_p5N0Hw}
 	 *
 	 * @return A new UUID object constructed using the decoded bytes.
 	 *
@@ -46,7 +46,7 @@ public class UUIDConverter {
 	 * @param uuid the UUID object to encode
 	 *
 	 * @return A String containing the resulting <strong>base64url</strong> encoded
-	 *         characters, e.g. {@code IKn6ATU7RVa-qbykef7BfQ}.
+	 *         characters, e.g. {@code S2LzZ8f5S_6e5fT_p5N0Hw}
 	 *
 	 * @see #fromBase64Url(String)
 	 */

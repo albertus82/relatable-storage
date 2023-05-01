@@ -3,6 +3,7 @@ package io.github.albertus82.filestore.jdbc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
+import java.net.URI;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.sql.PreparedStatement;
@@ -363,12 +364,25 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 
 		/**
-		 * Returns the UUID of the stored object.
+		 * Returns the {@link UUID} of the stored object.
 		 *
 		 * @return the UUID of the stored object.
 		 */
 		public UUID getUUID() {
 			return UUIDConverter.fromBase64Url(uuidBase64Url);
+		}
+
+		/**
+		 * Returns a new {@link URI} containing the {@link UUID} of the stored object,
+		 * encoded as <strong>base64url</strong> string.
+		 *
+		 * @return a new URI containing the UUID of the stored object, encoded as
+		 *         <strong>base64url</strong> string, e.g.
+		 *         {@code S2LzZ8f5S_6e5fT_p5N0Hw}
+		 */
+		@Override
+		public URI getURI() {
+			return URI.create(uuidBase64Url);
 		}
 
 		/** Checks if the resource exists in the database. */
