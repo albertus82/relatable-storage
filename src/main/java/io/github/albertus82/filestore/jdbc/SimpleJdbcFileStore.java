@@ -467,7 +467,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @param sql the statement to log
 	 */
 	protected void logStatement(final String sql) {
-		Objects.requireNonNull(sql);
+		Objects.requireNonNull(sql, "sql must not be null");
 		log.log(Level.FINE, "{0}", sql);
 	}
 
@@ -479,8 +479,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @param msgSupplier a supplier returning the log message
 	 */
 	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
-		Objects.requireNonNull(thrown);
-		Objects.requireNonNull(msgSupplier);
+		Objects.requireNonNull(thrown, "Throwable must not be null");
+		Objects.requireNonNull(msgSupplier, "msgSupplier must not be null");
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 

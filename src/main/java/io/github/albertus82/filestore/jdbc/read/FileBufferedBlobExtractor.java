@@ -155,8 +155,8 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 	 * @param msgSupplier a supplier returning the log message
 	 */
 	protected void logException(final Throwable thrown, final Supplier<String> msgSupplier) {
-		Objects.requireNonNull(thrown);
-		Objects.requireNonNull(msgSupplier);
+		Objects.requireNonNull(thrown, "Throwable must not be null");
+		Objects.requireNonNull(msgSupplier, "msgSupplier must not be null");
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
