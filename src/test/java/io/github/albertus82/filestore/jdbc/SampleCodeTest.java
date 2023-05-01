@@ -44,9 +44,9 @@ class SampleCodeTest {
 	@Test
 	void test() throws IOException {
 		DataSource dataSource = new DriverManagerDataSource(jdbcUrl);
-		SimpleFileStore storage = new SimpleJdbcFileStore(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
-		storage.store(new PathResource(tempFile), "myStoredFile.ext");
-		Resource resource = storage.get("myStoredFile.ext");
+		SimpleFileStore store = new SimpleJdbcFileStore(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
+		store.put(new PathResource(tempFile), "myStoredFile.ext");
+		Resource resource = store.get("myStoredFile.ext");
 		byte[] bytes = resource.getInputStream().readAllBytes();
 		Assertions.assertArrayEquals(tempFileContents, bytes);
 	}

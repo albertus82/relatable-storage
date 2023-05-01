@@ -274,24 +274,49 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public void store(final Resource resource, final String fileName) throws FileAlreadyExistsException, IOException {
+	public DatabaseResource put(final Resource resource, final String fileName) throws FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final long contentLength = insert(resource, fileName);
+		final DatabaseResource created = insert(resource, fileName);
 		final StringBuilder sb = new StringBuilder("UPDATE ");
 		appendSchemaAndTableName(sb).append(" SET content_length=? WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			jdbcOperations.update(sql, contentLength, fileName);
+			jdbcOperations.update(sql, created.contentLength(), fileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
+		return created;
 	}
 
 	@Override
-	public void rename(final String oldFileName, final String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+	public DatabaseResource copy(final String sourceFileName, final String destFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+		Objects.requireNonNull(sourceFileName, "sourceFileName must not be null");
+		Objects.requireNonNull(destFileName, "destFileName must not be null");
+		final StringBuilder insert = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(insert).append(" (filename, uuid_base64url, content_length, last_modified, compressed, encrypted, file_contents) SELECT ?, ?, content_length, last_modified, compressed, encrypted, file_contents FROM ");
+		appendSchemaAndTableName(insert).append(" WHERE filename=?");
+		final String sqlInsert = insert.toString();
+		logStatement(sqlInsert);
+		final String uuidBase64Url = UUIDUtils.toBase64Url(UUID.randomUUID());
+		try {
+			if (jdbcOperations.update(sqlInsert, destFileName, uuidBase64Url, sourceFileName) == 0) {
+				throw new NoSuchFileException(sourceFileName);
+			}
+		}
+		catch (final DuplicateKeyException e) {
+			throw new FileAlreadyExistsException(destFileName);
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
+		}
+		return get(destFileName);
+	}
+
+	@Override
+	public void move(final String oldFileName, final String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
 		final StringBuilder sb = new StringBuilder("UPDATE ");
@@ -468,7 +493,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	protected void logStatement(final String sql) {
 		Objects.requireNonNull(sql, "sql must not be null");
-		log.log(Level.FINE, "{0}", sql);
+		log.log(Level.INFO, "{0}", sql);
 	}
 
 	/**
@@ -484,13 +509,15 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
-	private long insert(final Resource resource, final String fileName) throws IOException {
+	private DatabaseResource insert(final Resource resource, final String fileName) throws IOException {
 		final Long contentLength = resource.isOpen() ? null : resource.contentLength();
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb);
 		sb.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
 		final String sql = sb.toString();
 		logStatement(sql);
+		final Timestamp lastModified = determineLastModifiedTimestamp(resource);
+		final String uuidBase64Url = UUIDUtils.toBase64Url(UUID.randomUUID());
 		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris)) {
 			try (final InputStream inputStream = binaryStreamProvider.getContentStream(cis, new BlobStoreParameters(compression, password))) {
 				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
@@ -498,10 +525,10 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
 						int columnIndex = 0;
 						ps.setString(++columnIndex, fileName);
-						ps.setTimestamp(++columnIndex, determineLastModifiedTimestamp(resource));
+						ps.setTimestamp(++columnIndex, lastModified);
 						ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
 						ps.setBoolean(++columnIndex, password != null);
-						ps.setString(++columnIndex, UUIDUtils.toBase64Url(UUID.randomUUID()));
+						ps.setString(++columnIndex, uuidBase64Url);
 						lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
 					}
 				});
@@ -509,7 +536,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			if (contentLength != null && contentLength.longValue() != cis.getCount()) {
 				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
 			}
-			return cis.getCount();
+			return new DatabaseResource(fileName, cis.getCount(), lastModified.getTime(), uuidBase64Url);
 		}
 		catch (final DuplicateKeyException e) {
 			logException(e, () -> fileName);

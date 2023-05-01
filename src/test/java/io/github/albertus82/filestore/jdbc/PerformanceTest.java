@@ -137,7 +137,7 @@ class PerformanceTest {
 						final byte currentIteration = i;
 						Assertions.assertDoesNotThrow(() -> {
 							final long t0 = System.nanoTime();
-							store.store(new InputStreamResource(is), fileName);
+							store.put(new InputStreamResource(is), fileName);
 							final long t = System.nanoTime() - t0;
 							log.log(Level.FINE, "Written in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
 							System.out.printf(" %d%% **", 100 / (ITERATION_COUNT * 2) * (currentIteration * 2 - 1));

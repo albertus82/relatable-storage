@@ -42,14 +42,16 @@ public interface SimpleFileStore {
 	 * @param resource the data source of the file
 	 * @param fileName the name of the file to create
 	 *
+	 * @return the resource representing the newly created object.
+	 *
 	 * @throws FileAlreadyExistsException if a file with the same {@code fileName}
 	 *         already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	void store(Resource resource, String fileName) throws FileAlreadyExistsException, IOException;
+	Resource put(Resource resource, String fileName) throws FileAlreadyExistsException, IOException;
 
 	/**
-	 * Renames a file.
+	 * Moves or renames a file.
 	 *
 	 * @param oldFileName the current (old) file name
 	 * @param newFileName the desired (new) file name
@@ -58,7 +60,21 @@ public interface SimpleFileStore {
 	 * @throws FileAlreadyExistsException if {@code newFileName} already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	void rename(String oldFileName, String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException;
+	void move(String oldFileName, String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException;
+
+	/**
+	 * Copies a file.
+	 *
+	 * @param sourceFileName the source file name
+	 * @param destFileName the destination file name
+	 *
+	 * @return the resource representing the newly created object.
+	 *
+	 * @throws NoSuchFileException if {@code sourceFileName} does not exist
+	 * @throws FileAlreadyExistsException if {@code destFileName} already exists
+	 * @throws IOException if an I/O error occurs
+	 */
+	Resource copy(String sourceFileName, String destFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException;
 
 	/**
 	 * Deletes a file.
