@@ -60,11 +60,13 @@ public interface SimpleFileStore {
 	 * @param newFileName the desired (new) file name
 	 * @param options options specifying how the move should be done
 	 *
+	 * @return the resource representing the moved object.
+	 *
 	 * @throws NoSuchFileException if {@code oldFileName} does not exist
 	 * @throws FileAlreadyExistsException if {@code newFileName} already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	void move(String oldFileName, String newFileName, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
+	Resource move(String oldFileName, String newFileName, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
 
 	/**
 	 * Copies a file.

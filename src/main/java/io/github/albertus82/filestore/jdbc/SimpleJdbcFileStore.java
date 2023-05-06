@@ -16,12 +16,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -296,17 +296,9 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 				throw new IllegalArgumentException(option + " not allowed");
 			}
 		}
-		boolean replace = false;
-		final List<OpenOption> optionList = Arrays.asList(options);
-		if (optionList.contains(StandardOpenOption.TRUNCATE_EXISTING) && !optionList.contains(StandardOpenOption.CREATE_NEW)) {
-			replace = true;
-		}
-		return put(resource, fileName, replace);
-	}
-
-	private DatabaseResource put(final Resource resource, final String fileName, final boolean replace) throws IOException {
+		final Collection<OpenOption> optionCollection = Set.of(options);
 		final DatabaseResource stored;
-		if (replace) {
+		if (optionCollection.contains(StandardOpenOption.TRUNCATE_EXISTING) && !optionCollection.contains(StandardOpenOption.CREATE_NEW)) {
 			final UUID existingUUID = findUUIDByFileName(fileName);
 			if (existingUUID == null) {
 				stored = putInsert(resource, fileName);
@@ -329,21 +321,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			throw new IOException(e);
 		}
 		return stored;
-	}
-
-	private UUID findUUIDByFileName(final String fileName) throws IOException {
-		final StringBuilder sb = new StringBuilder("SELECT uuid_base64url FROM ");
-		appendSchemaAndTableName(sb).append(" WHERE filename=?");
-		final String sql = sb.toString();
-		logStatement(sql);
-		return jdbcOperations.query(sql, rs -> {
-			if (rs.next()) {
-				return UUIDUtils.fromBase64Url(rs.getString(1));
-			}
-			else {
-				return null;
-			}
-		}, fileName);
 	}
 
 	private DatabaseResource putInsert(final Resource resource, final String fileName) throws IOException {
@@ -404,9 +381,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(sourceFileName, "sourceFileName must not be null");
 		Objects.requireNonNull(destFileName, "destFileName must not be null");
 		Objects.requireNonNull(options, "options must not be null");
-		final boolean replace = Arrays.asList(options).contains(StandardCopyOption.REPLACE_EXISTING);
 		try {
-			if (replace) {
+			if (Set.of(options).contains(StandardCopyOption.REPLACE_EXISTING)) {
 				final UUID existingUUID = findUUIDByFileName(destFileName);
 				if (existingUUID == null) {
 					copyInsert(sourceFileName, destFileName);
@@ -456,15 +432,15 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public void move(final String oldFileName, final String newFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+	public DatabaseResource move(final String oldFileName, final String newFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
 		Objects.requireNonNull(newFileName, "newFileName must not be null");
 		Objects.requireNonNull(options, "options must not be null");
-		final List<CopyOption> optionList = Arrays.asList(options);
-		if (optionList.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
+		final Collection<CopyOption> optionCollection = Set.of(options);
+		if (optionCollection.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
 			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active.");
 		}
-		final boolean replace = optionList.contains(StandardCopyOption.REPLACE_EXISTING);
+		final boolean replace = optionCollection.contains(StandardCopyOption.REPLACE_EXISTING);
 		try {
 			if (replace && findUUIDByFileName(newFileName) != null) {
 				delete(newFileName);
@@ -477,6 +453,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
+		return get(newFileName);
 	}
 
 	private void moveUpdate(final String oldFileName, final String newFileName) throws IOException, NoSuchFileException {
@@ -660,6 +637,21 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(thrown, "Throwable must not be null");
 		Objects.requireNonNull(msgSupplier, "msgSupplier must not be null");
 		log.log(Level.FINE, thrown, msgSupplier);
+	}
+
+	private UUID findUUIDByFileName(final String fileName) throws IOException {
+		final StringBuilder sb = new StringBuilder("SELECT uuid_base64url FROM ");
+		appendSchemaAndTableName(sb).append(" WHERE filename=?");
+		final String sql = sb.toString();
+		logStatement(sql);
+		return jdbcOperations.query(sql, rs -> {
+			if (rs.next()) {
+				return UUIDUtils.fromBase64Url(rs.getString(1));
+			}
+			else {
+				return null;
+			}
+		}, fileName);
 	}
 
 	private String sanitizeIdentifier(final String identifier) throws IOException {

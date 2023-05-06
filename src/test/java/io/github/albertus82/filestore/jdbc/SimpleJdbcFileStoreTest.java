@@ -279,20 +279,28 @@ class SimpleJdbcFileStoreTest {
 			store.put(toSave1, "foo.txt", StandardOpenOption.TRUNCATE_EXISTING); // insert (and replace... nothing)
 		}
 		// foo.txt
-		final Resource foo = store.get("foo.txt");
-		Assertions.assertTrue(foo.exists());
-		store.move("foo.txt", "bar.txt");
+		final Resource storedFoo = store.get("foo.txt");
+		Assertions.assertTrue(storedFoo.exists());
+		final Resource bar1 = store.move("foo.txt", "bar.txt");
 		// bar.txt
-		Assertions.assertFalse(foo.exists());
+		Assertions.assertFalse(storedFoo.exists());
 		Assertions.assertThrows(NoSuchFileException.class, () -> store.get("foo.txt"));
-		final Resource bar = store.get("bar.txt");
-		Assertions.assertTrue(bar.exists());
-		Assertions.assertEquals(foo.getURI(), bar.getURI());
-		try (final InputStream is = bar.getInputStream()) {
+		final Resource bar2 = store.get("bar.txt");
+		Assertions.assertTrue(bar2.exists());
+		Assertions.assertEquals(storedFoo.getURI(), bar2.getURI());
+		Assertions.assertEquals(storedFoo.contentLength(), bar2.contentLength());
+		Assertions.assertEquals(storedFoo.lastModified(), bar2.lastModified());
+		Assertions.assertNotEquals(storedFoo.getDescription(), bar2.getDescription());
+		Assertions.assertEquals(bar1.getURI(), bar2.getURI());
+		Assertions.assertEquals(bar1.contentLength(), bar2.contentLength());
+		Assertions.assertEquals(bar1.lastModified(), bar2.lastModified());
+		Assertions.assertEquals(bar1.getDescription(), bar2.getDescription());
+		Assertions.assertEquals(bar1, bar2);
+		try (final InputStream is = bar2.getInputStream()) {
 			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
-		Assertions.assertEquals(foo.lastModified(), bar.lastModified());
-		Assertions.assertEquals(foo.contentLength(), bar.contentLength());
+		Assertions.assertEquals(storedFoo.lastModified(), bar2.lastModified());
+		Assertions.assertEquals(storedFoo.contentLength(), bar2.contentLength());
 		Assertions.assertEquals(1, store.list().size());
 		Assertions.assertThrows(NoSuchFileException.class, () -> store.move("foo.txt", "baz.txt")); // move without replace
 		try (final InputStream is = new ByteArrayInputStream("asdfghjkl".getBytes(StandardCharsets.US_ASCII))) {
@@ -301,7 +309,7 @@ class SimpleJdbcFileStoreTest {
 		}
 		// foo.txt, bar.txt
 		Assertions.assertEquals(2, store.list().size());
-		try (final InputStream is = foo.getInputStream()) {
+		try (final InputStream is = storedFoo.getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.move("foo.txt", "bar.txt"));
@@ -309,7 +317,7 @@ class SimpleJdbcFileStoreTest {
 		store.move("foo.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING); // move with replace
 		// bar.txt
 		Assertions.assertEquals(1, store.list().size());
-		try (final InputStream is = bar.getInputStream()) {
+		try (final InputStream is = bar2.getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
 		Assertions.assertThrows(IllegalStateException.class, () -> store.move("bar.txt", "baz.txt", StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)); // move with replace
