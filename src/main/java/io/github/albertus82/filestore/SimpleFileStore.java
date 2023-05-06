@@ -20,7 +20,7 @@ public interface SimpleFileStore {
 	 *        and {@code ?} wildcards (optional)
 	 *
 	 * @return a list of resources representing the files that match the provided
-	 *         pattern (or all if no pattern is provided)
+	 *         patterns (or all if no pattern is provided)
 	 *
 	 * @throws IOException if an I/O error occurs
 	 */
