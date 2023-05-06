@@ -19,8 +19,8 @@ public interface SimpleFileStore {
 	 * @param patterns one or more filter patterns that may also include {@code *}
 	 *        and {@code ?} wildcards (optional)
 	 *
-	 * @return a list of objects referencing the files matching the provided pattern
-	 *         (or all if no pattern is provided)
+	 * @return a list of resources representing the files that match the provided
+	 *         pattern (or all if no pattern is provided)
 	 *
 	 * @throws IOException if an I/O error occurs
 	 */
@@ -31,7 +31,7 @@ public interface SimpleFileStore {
 	 *
 	 * @param fileName the name of the desired file (unique key)
 	 *
-	 * @return an object referencing the requested file
+	 * @return the resource representing the requested object
 	 *
 	 * @throws NoSuchFileException if the specified {@code fileName} does not exist
 	 * @throws IOException if an I/O error occurs
