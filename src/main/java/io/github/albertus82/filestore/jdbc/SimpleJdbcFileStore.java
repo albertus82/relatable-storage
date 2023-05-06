@@ -440,12 +440,17 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		if (optionCollection.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
 			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active.");
 		}
-		final boolean replace = optionCollection.contains(StandardCopyOption.REPLACE_EXISTING);
 		try {
-			if (replace && findUUIDByFileName(newFileName) != null) {
+			if (optionCollection.contains(StandardCopyOption.REPLACE_EXISTING) && findUUIDByFileName(newFileName) != null) {
 				delete(newFileName);
 			}
-			moveUpdate(oldFileName, newFileName);
+			final StringBuilder sb = new StringBuilder("UPDATE ");
+			appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
+			final String sql = sb.toString();
+			logStatement(sql);
+			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
+				throw new NoSuchFileException(oldFileName);
+			}
 		}
 		catch (final DuplicateKeyException e) {
 			throw new FileAlreadyExistsException(newFileName);
@@ -454,16 +459,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 			throw new IOException(e);
 		}
 		return get(newFileName);
-	}
-
-	private void moveUpdate(final String oldFileName, final String newFileName) throws IOException, NoSuchFileException {
-		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
-		final String sql = sb.toString();
-		logStatement(sql);
-		if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
-			throw new NoSuchFileException(oldFileName);
-		}
 	}
 
 	@Override
