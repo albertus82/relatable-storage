@@ -449,7 +449,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?) WHERE o.uuid_base64url=?");
 		final String sql = sb.toString();
 		logStatement(sql);
-		final var affectedRows = jdbcOperations.update(sql, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName, sourceFileName, sourceFileName, sourceFileName, sourceFileName, UUIDUtils.toBase64Url(existingUUID));
+		final int affectedRows = jdbcOperations.update(sql, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName, sourceFileName, sourceFileName, sourceFileName, sourceFileName, UUIDUtils.toBase64Url(existingUUID));
 		if (affectedRows != 1) {
 			throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(sql, 1, affectedRows);
 		}
