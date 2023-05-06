@@ -30,6 +30,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.DescriptiveResource;
 import org.springframework.core.io.FileSystemResource;
@@ -134,6 +135,11 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.move("a", null));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.move(null, "b"));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.move(null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.move("a", "b", null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.copy("a", null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.copy(null, "b"));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.copy(null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.copy("a", "b", null));
 
 		final var e = new FileBufferedBlobExtractor();
 		Assertions.assertThrows(NullPointerException.class, () -> e.withDirectory(null));
@@ -142,6 +148,7 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.put(null, "y"));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.put(dr, null));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.put(null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> s2.put(dr, "y", null));
 
 		final SimpleJdbcFileStore s3 = new SimpleJdbcFileStore(jdbcTemplate, "StORaGe", fbbe);
 		Assertions.assertEquals("StORaGe", s3.getTable());
@@ -269,68 +276,93 @@ class SimpleJdbcFileStoreTest {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave1 = new InputStreamResource(is);
-			store.put(toSave1, "foo.txt", StandardOpenOption.TRUNCATE_EXISTING);
+			store.put(toSave1, "foo.txt", StandardOpenOption.TRUNCATE_EXISTING); // insert (and replace... nothing)
 		}
-		Assertions.assertTrue(store.get("foo.txt").exists());
+		// foo.txt
+		final Resource foo = store.get("foo.txt");
+		Assertions.assertTrue(foo.exists());
 		store.move("foo.txt", "bar.txt");
-		Assertions.assertTrue(store.get("bar.txt").exists());
-		Assertions.assertEquals(1, store.list().size());
+		// bar.txt
+		Assertions.assertFalse(foo.exists());
 		Assertions.assertThrows(NoSuchFileException.class, () -> store.get("foo.txt"));
-		Assertions.assertThrows(NoSuchFileException.class, () -> store.move("foo.txt", "baz.txt"));
+		final Resource bar = store.get("bar.txt");
+		Assertions.assertTrue(bar.exists());
+		Assertions.assertEquals(foo.getURI(), bar.getURI());
+		try (final InputStream is = bar.getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		Assertions.assertEquals(foo.lastModified(), bar.lastModified());
+		Assertions.assertEquals(foo.contentLength(), bar.contentLength());
+		Assertions.assertEquals(1, store.list().size());
+		Assertions.assertThrows(NoSuchFileException.class, () -> store.move("foo.txt", "baz.txt")); // move without replace
 		try (final InputStream is = new ByteArrayInputStream("asdfghjkl".getBytes(StandardCharsets.US_ASCII))) {
 			final Resource toSave2 = new InputStreamResource(is);
-			store.put(toSave2, "foo.txt");
+			store.put(toSave2, "foo.txt"); // insert without replace
 		}
+		// foo.txt, bar.txt
 		Assertions.assertEquals(2, store.list().size());
-		try (final InputStream is = store.get("foo.txt").getInputStream()) {
+		try (final InputStream is = foo.getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.move("foo.txt", "bar.txt"));
-		store.move("foo.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING);
-		try (final InputStream is = store.get("bar.txt").getInputStream()) {
+		// foo.txt, bar.txt
+		store.move("foo.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING); // move with replace
+		// bar.txt
+		Assertions.assertEquals(1, store.list().size());
+		try (final InputStream is = bar.getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
+		Assertions.assertThrows(IllegalStateException.class, () -> store.move("bar.txt", "baz.txt", StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)); // move with replace
 	}
 
 	@Test
 	void testCopy() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
+		final Resource saved1;
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave1 = new InputStreamResource(is);
-			final Resource saved1 = store.put(toSave1, "foo.txt");
-			Assertions.assertTrue(store.get("foo.txt").exists());
-			final Resource copied1 = store.copy("foo.txt", "bar.txt");
-			Assertions.assertTrue(store.get("bar.txt").exists());
-			Assertions.assertNotEquals(saved1.getURI(), copied1.getURI());
-			Assertions.assertEquals(saved1.contentLength(), copied1.contentLength());
-			Assertions.assertEquals(saved1.lastModified(), copied1.lastModified());
-			final Resource copied2 = store.copy("foo.txt", "aaa.txt", StandardCopyOption.REPLACE_EXISTING);
-			Assertions.assertTrue(store.get("aaa.txt").exists());
-			Assertions.assertNotEquals(saved1.getURI(), copied2.getURI());
-			Assertions.assertEquals(saved1.contentLength(), copied2.contentLength());
-			Assertions.assertEquals(saved1.lastModified(), copied2.lastModified());
+			saved1 = store.put(toSave1, "foo.txt"); // insert without replace
 		}
+		// foo.txt
+		Assertions.assertTrue(store.get("foo.txt").exists());
+		final Resource copied1 = store.copy("foo.txt", "bar.txt"); // copy without replace
+		// foo.txt, bar.txt
+		Assertions.assertTrue(store.get("bar.txt").exists());
+		Assertions.assertNotEquals(saved1.getURI(), copied1.getURI());
+		Assertions.assertEquals(saved1.contentLength(), copied1.contentLength());
+		Assertions.assertEquals(saved1.lastModified(), copied1.lastModified());
+		final Resource copied2 = store.copy("foo.txt", "aaa.txt", StandardCopyOption.REPLACE_EXISTING); // copy with replace
+		// foo.txt, bar.txt, aaa.txt
+		Assertions.assertTrue(store.get("aaa.txt").exists());
+		Assertions.assertNotEquals(saved1.getURI(), copied2.getURI());
+		Assertions.assertEquals(saved1.contentLength(), copied2.contentLength());
+		Assertions.assertEquals(saved1.lastModified(), copied2.lastModified());
 		Assertions.assertEquals(3, store.list().size());
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave2 = new InputStreamResource(is);
-			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.put(toSave2, "foo.txt"));
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.put(toSave2, "foo.txt")); // insert without replace
 		}
-		try (final InputStream is = new ByteArrayInputStream("asdfghjkl".getBytes(StandardCharsets.US_ASCII))) {
-			final Resource toSave3 = new InputStreamResource(is);
-			final Resource savedBaz = store.put(toSave3, "baz.txt");
-			try (final InputStream is2 = savedBaz.getInputStream()) {
-				Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is2.readAllBytes());
-			}
+		final Resource toSave3 = new ByteArrayResource("asdfghjkl".getBytes(StandardCharsets.US_ASCII));
+		final Resource savedBaz = store.put(toSave3, "baz.txt"); // insert without replace
+		Assertions.assertEquals(9, savedBaz.contentLength());
+		// foo.txt, bar.txt, aaa.txt, baz.txt
+		try (final InputStream is2 = savedBaz.getInputStream()) {
+			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is2.readAllBytes());
 		}
 		try (final InputStream is = store.get("baz.txt").getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
-
 		Assertions.assertEquals(4, store.list().size());
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.copy("baz.txt", "bar.txt"));
-		final Resource r = store.copy("baz.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING);
+		try (final InputStream is = store.get("bar.txt").getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		final Resource r = store.copy("baz.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING); // copy with replace
 		Assertions.assertEquals(4, store.list().size());
 		try (final InputStream is = r.getInputStream()) {
+			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		try (final InputStream is = store.get("bar.txt").getInputStream()) {
 			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
 		}
 	}
@@ -475,18 +507,30 @@ class SimpleJdbcFileStoreTest {
 	void testPut() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
 		try (final InputStream is = new ByteArrayInputStream(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))) {
-			Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), "myfile.txt"));
+			final var toSave = new InputStreamResource(is);
+			Assertions.assertThrows(IllegalArgumentException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.READ));
+			Assertions.assertThrows(UnsupportedOperationException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.DELETE_ON_CLOSE));
+			Assertions.assertThrows(UnsupportedOperationException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.APPEND));
+			Assertions.assertDoesNotThrow(() -> store.put(toSave, "myfile.txt"));
 		}
+		// myfile.txt
 		Assertions.assertEquals(1, store.list().size());
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.put(new InputStreamResource(is), "myfile.txt"));
 		}
-		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
-			final Resource r = store.put(new InputStreamResource(is), "myfile.txt", StandardOpenOption.TRUNCATE_EXISTING); // replace
-			try (final InputStream is2 = r.getInputStream()) {
-				Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is2.readAllBytes());
-			}
+		final Resource saved = store.put(new ByteArrayResource("qwertyuiop".getBytes(StandardCharsets.US_ASCII)), "myfile.txt", StandardOpenOption.TRUNCATE_EXISTING); // replace
+		try (final InputStream is2 = saved.getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is2.readAllBytes());
 		}
+		Assertions.assertNotNull(saved.getURI());
+		Assertions.assertNotEquals(0, saved.lastModified());
+		Assertions.assertEquals("myfile.txt", saved.getFilename());
+		Assertions.assertEquals(10, saved.contentLength());
+		final Resource retrieved = store.get("myfile.txt");
+		Assertions.assertEquals(saved.getFilename(), retrieved.getFilename());
+		Assertions.assertEquals(saved.lastModified(), retrieved.lastModified());
+		Assertions.assertEquals(saved.contentLength(), retrieved.contentLength());
+		Assertions.assertEquals(saved.getURI(), retrieved.getURI());
 	}
 
 	@Test
