@@ -316,6 +316,42 @@ class SimpleJdbcFileStoreTest {
 	}
 
 	@Test
+	@Transactional
+	void testMoveTransactional() throws IOException {
+		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
+		final Resource storedFoo;
+		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
+			final Resource toSave1 = new InputStreamResource(is);
+			storedFoo = store.put(toSave1, "foo.txt"); // insert (and replace... nothing)
+		}
+		try (final InputStream is = storedFoo.getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		try (final InputStream is = store.get("foo.txt").getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		// foo.txt
+		Assertions.assertEquals(1, store.list().size());
+		final Resource storedBar = store.put(new ByteArrayResource("asdfghjkl".getBytes(StandardCharsets.US_ASCII)), "bar.txt");
+		// foo.txt, bar.txt
+		Assertions.assertEquals(2, store.list().size());
+		try (final InputStream is = storedBar.getInputStream()) {
+			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		try (final InputStream is = store.get("bar.txt").getInputStream()) {
+			Assertions.assertArrayEquals("asdfghjkl".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.move("foo.txt", "bar.txt", StandardCopyOption.ATOMIC_MOVE)); // move without replace
+		Assertions.assertEquals(2, store.list().size());
+		Assertions.assertDoesNotThrow(() -> store.move("foo.txt", "bar.txt", StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)); // move with replace
+		// bar.txt
+		Assertions.assertEquals(1, store.list().size());
+		try (final InputStream is = store.get("bar.txt").getInputStream()) {
+			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+	}
+
+	@Test
 	void testCopy() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		final Resource saved1;
