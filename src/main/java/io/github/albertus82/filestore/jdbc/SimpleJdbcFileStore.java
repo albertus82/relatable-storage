@@ -4,14 +4,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StreamCorruptedException;
 import java.net.URI;
+import java.nio.file.CopyOption;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,11 +32,13 @@ import org.springframework.core.io.Resource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.JdbcUpdateAffectedIncorrectNumberOfRowsException;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.StatementCallback;
 import org.springframework.jdbc.core.support.AbstractLobCreatingPreparedStatementCallback;
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import io.github.albertus82.filestore.SimpleFileStore;
 import io.github.albertus82.filestore.io.Compression;
@@ -274,36 +283,140 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	}
 
 	@Override
-	public DatabaseResource put(final Resource resource, final String fileName) throws FileAlreadyExistsException, IOException {
+	public DatabaseResource put(final Resource resource, final String fileName, final OpenOption... options) throws FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
 		Objects.requireNonNull(fileName, "fileName must not be null");
-		final DatabaseResource created = insert(resource, fileName);
+		Objects.requireNonNull(options, "options must not be null");
+		final Collection<StandardOpenOption> unsupportedOptions = EnumSet.of(StandardOpenOption.APPEND, StandardOpenOption.DELETE_ON_CLOSE);
+		for (final OpenOption option : options) {
+			if (unsupportedOptions.contains(option)) {
+				throw new UnsupportedOperationException(option + " not supported");
+			}
+			if (StandardOpenOption.READ.equals(option)) {
+				throw new IllegalArgumentException(option + " not allowed");
+			}
+		}
+		boolean replace = false;
+		final List<OpenOption> optionList = Arrays.asList(options);
+		if (optionList.contains(StandardOpenOption.TRUNCATE_EXISTING) && !optionList.contains(StandardOpenOption.CREATE_NEW)) {
+			replace = true;
+		}
+		return put(resource, fileName, replace);
+	}
+
+	private DatabaseResource put(final Resource resource, final String fileName, final boolean replace) throws IOException {
+		final DatabaseResource stored;
+		if (replace) {
+			final UUID existingUUID = findUUIDByFileName(fileName);
+			if (existingUUID == null) {
+				stored = putInsert(resource, fileName);
+			}
+			else {
+				stored = putUpdate(resource, fileName, existingUUID);
+			}
+		}
+		else {
+			stored = putInsert(resource, fileName);
+		}
 		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET content_length=? WHERE filename=?");
+		appendSchemaAndTableName(sb).append(" SET content_length=? WHERE uuid_base64url=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			jdbcOperations.update(sql, created.contentLength(), fileName);
+			jdbcOperations.update(sql, stored.contentLength(), UUIDUtils.toBase64Url(stored.getUUID()));
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
-		return created;
+		return stored;
+	}
+
+	private UUID findUUIDByFileName(final String fileName) throws IOException {
+		final StringBuilder sb = new StringBuilder("SELECT uuid_base64url FROM ");
+		appendSchemaAndTableName(sb).append(" WHERE filename=?");
+		final String sql = sb.toString();
+		logStatement(sql);
+		return jdbcOperations.query(sql, rs -> {
+			if (rs.next()) {
+				return UUIDUtils.fromBase64Url(rs.getString(1));
+			}
+			else {
+				return null;
+			}
+		}, fileName);
+	}
+
+	private DatabaseResource putInsert(final Resource resource, final String fileName) throws IOException {
+		final StringBuilder sql = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(sql);
+		sql.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?,?,?,?,?,?)");
+		return store(resource, fileName, sql.toString(), null);
+	}
+
+	private DatabaseResource putUpdate(final Resource resource, final String fileName, final UUID existingUUID) throws IOException {
+		final StringBuilder sql = new StringBuilder("UPDATE ");
+		appendSchemaAndTableName(sql);
+		sql.append(" SET filename=?, last_modified=?, compressed=?, encrypted=?, uuid_base64url=?, file_contents=? WHERE uuid_base64url=?");
+		return store(resource, fileName, sql.toString(), existingUUID);
+	}
+
+	private DatabaseResource store(final Resource resource, final String fileName, final String sql, final UUID existingUUID) throws IOException, StreamCorruptedException, FileAlreadyExistsException {
+		final Long contentLength = resource.isOpen() ? null : resource.contentLength();
+		final Timestamp lastModified = determineLastModifiedTimestamp(resource);
+		final boolean compressed = !Compression.NONE.equals(compression);
+		final boolean encrypted = password != null;
+		final String uuidBase64Url = UUIDUtils.toBase64Url(UUID.randomUUID());
+		logStatement(sql);
+		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris)) {
+			try (final InputStream inputStream = binaryStreamProvider.getContentStream(cis, new BlobStoreParameters(compression, password))) {
+				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
+					@Override
+					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
+						int columnIndex = 0;
+						ps.setString(++columnIndex, fileName);
+						ps.setTimestamp(++columnIndex, lastModified);
+						ps.setBoolean(++columnIndex, compressed);
+						ps.setBoolean(++columnIndex, encrypted);
+						ps.setString(++columnIndex, uuidBase64Url);
+						lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
+						if (existingUUID != null) {
+							ps.setString(++columnIndex, UUIDUtils.toBase64Url(existingUUID));
+						}
+					}
+				});
+			}
+			if (contentLength != null && contentLength.longValue() != cis.getCount()) {
+				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
+			}
+			return new DatabaseResource(fileName, cis.getCount(), lastModified.getTime(), uuidBase64Url);
+		}
+		catch (final DuplicateKeyException e) {
+			logException(e, () -> fileName);
+			throw new FileAlreadyExistsException(fileName);
+		}
+		catch (final DataAccessException e) {
+			throw new IOException(e);
+		}
 	}
 
 	@Override
-	public DatabaseResource copy(final String sourceFileName, final String destFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+	public DatabaseResource copy(final String sourceFileName, final String destFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(sourceFileName, "sourceFileName must not be null");
 		Objects.requireNonNull(destFileName, "destFileName must not be null");
-		final StringBuilder insert = new StringBuilder("INSERT INTO ");
-		appendSchemaAndTableName(insert).append(" (filename, uuid_base64url, content_length, last_modified, compressed, encrypted, file_contents) SELECT ?, ?, content_length, last_modified, compressed, encrypted, file_contents FROM ");
-		appendSchemaAndTableName(insert).append(" WHERE filename=?");
-		final String sqlInsert = insert.toString();
-		logStatement(sqlInsert);
-		final String uuidBase64Url = UUIDUtils.toBase64Url(UUID.randomUUID());
+		Objects.requireNonNull(options, "options must not be null");
+		final boolean replace = Arrays.asList(options).contains(StandardCopyOption.REPLACE_EXISTING);
 		try {
-			if (jdbcOperations.update(sqlInsert, destFileName, uuidBase64Url, sourceFileName) == 0) {
-				throw new NoSuchFileException(sourceFileName);
+			if (replace) {
+				final UUID existingUUID = findUUIDByFileName(destFileName);
+				if (existingUUID == null) {
+					copyInsert(sourceFileName, destFileName);
+				}
+				else {
+					copyUpdate(sourceFileName, existingUUID);
+				}
+			}
+			else {
+				copyInsert(sourceFileName, destFileName);
 			}
 		}
 		catch (final DuplicateKeyException e) {
@@ -315,24 +428,64 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		return get(destFileName);
 	}
 
-	@Override
-	public void move(final String oldFileName, final String newFileName) throws NoSuchFileException, FileAlreadyExistsException, IOException {
-		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
-		Objects.requireNonNull(newFileName, "newFileName must not be null");
-		final StringBuilder sb = new StringBuilder("UPDATE ");
-		appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
+	private void copyInsert(final String sourceFileName, final String destFileName) throws IOException, NoSuchFileException, FileAlreadyExistsException {
+		final StringBuilder sb = new StringBuilder("INSERT INTO ");
+		appendSchemaAndTableName(sb).append(" (filename, uuid_base64url, content_length, last_modified, compressed, encrypted, file_contents) SELECT ?, ?, content_length, last_modified, compressed, encrypted, file_contents FROM ");
+		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
+		if (jdbcOperations.update(sql, destFileName, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName) == 0) {
+			throw new NoSuchFileException(sourceFileName);
+		}
+	}
+
+	private void copyUpdate(final String sourceFileName, final UUID existingUUID) throws IOException {
+		final StringBuilder sb = new StringBuilder("UPDATE ");
+		appendSchemaAndTableName(sb).append(" o SET o.uuid_base64url=?, o.content_length=(SELECT i.content_length FROM ");
+		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?), o.last_modified=(SELECT i.last_modified FROM ");
+		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?), o.compressed=(SELECT i.compressed FROM ");
+		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?), o.encrypted=(SELECT i.encrypted FROM ");
+		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?), o.file_contents=(SELECT i.file_contents FROM ");
+		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?) WHERE o.uuid_base64url=?");
+		final String sql = sb.toString();
+		logStatement(sql);
+		final var affectedRows = jdbcOperations.update(sql, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName, sourceFileName, sourceFileName, sourceFileName, sourceFileName, UUIDUtils.toBase64Url(existingUUID));
+		if (affectedRows != 1) {
+			throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(sql, 1, affectedRows);
+		}
+	}
+
+	@Override
+	public void move(final String oldFileName, final String newFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
+		Objects.requireNonNull(newFileName, "newFileName must not be null");
+		Objects.requireNonNull(options, "options must not be null");
+		final List<CopyOption> optionList = Arrays.asList(options);
+		if (optionList.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
+			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active.");
+		}
+		final boolean replace = optionList.contains(StandardCopyOption.REPLACE_EXISTING);
 		try {
-			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
-				throw new NoSuchFileException(oldFileName);
+			if (replace && findUUIDByFileName(newFileName) != null) {
+				delete(newFileName);
 			}
+			moveUpdate(oldFileName, newFileName);
 		}
 		catch (final DuplicateKeyException e) {
 			throw new FileAlreadyExistsException(newFileName);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
+		}
+	}
+
+	private void moveUpdate(final String oldFileName, final String newFileName) throws IOException, NoSuchFileException {
+		final StringBuilder sb = new StringBuilder("UPDATE ");
+		appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
+		final String sql = sb.toString();
+		logStatement(sql);
+		if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
+			throw new NoSuchFileException(oldFileName);
 		}
 	}
 
@@ -493,7 +646,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 */
 	protected void logStatement(final String sql) {
 		Objects.requireNonNull(sql, "sql must not be null");
-		log.log(Level.INFO, "{0}", sql);
+		log.log(Level.FINE, "{0}", sql);
 	}
 
 	/**
@@ -507,44 +660,6 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		Objects.requireNonNull(thrown, "Throwable must not be null");
 		Objects.requireNonNull(msgSupplier, "msgSupplier must not be null");
 		log.log(Level.FINE, thrown, msgSupplier);
-	}
-
-	private DatabaseResource insert(final Resource resource, final String fileName) throws IOException {
-		final Long contentLength = resource.isOpen() ? null : resource.contentLength();
-		final StringBuilder sb = new StringBuilder("INSERT INTO ");
-		appendSchemaAndTableName(sb);
-		sb.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?, ?, ?, ?, ?, ?)");
-		final String sql = sb.toString();
-		logStatement(sql);
-		final Timestamp lastModified = determineLastModifiedTimestamp(resource);
-		final String uuidBase64Url = UUIDUtils.toBase64Url(UUID.randomUUID());
-		try (final InputStream ris = resource.getInputStream(); final CountingInputStream cis = new CountingInputStream(ris)) {
-			try (final InputStream inputStream = binaryStreamProvider.getContentStream(cis, new BlobStoreParameters(compression, password))) {
-				jdbcOperations.execute(sql, new AbstractLobCreatingPreparedStatementCallback(new DefaultLobHandler()) {
-					@Override
-					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
-						int columnIndex = 0;
-						ps.setString(++columnIndex, fileName);
-						ps.setTimestamp(++columnIndex, lastModified);
-						ps.setBoolean(++columnIndex, !Compression.NONE.equals(compression));
-						ps.setBoolean(++columnIndex, password != null);
-						ps.setString(++columnIndex, uuidBase64Url);
-						lobCreator.setBlobAsBinaryStream(ps, ++columnIndex, inputStream, -1);
-					}
-				});
-			}
-			if (contentLength != null && contentLength.longValue() != cis.getCount()) {
-				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
-			}
-			return new DatabaseResource(fileName, cis.getCount(), lastModified.getTime(), uuidBase64Url);
-		}
-		catch (final DuplicateKeyException e) {
-			logException(e, () -> fileName);
-			throw new FileAlreadyExistsException(fileName);
-		}
-		catch (final DataAccessException e) {
-			throw new IOException(e);
-		}
 	}
 
 	private String sanitizeIdentifier(final String identifier) throws IOException {
