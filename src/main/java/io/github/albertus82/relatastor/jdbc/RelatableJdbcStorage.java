@@ -40,7 +40,7 @@ import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import io.github.albertus82.relatastor.SimpleFileStore;
+import io.github.albertus82.relatastor.RelatableStorage;
 import io.github.albertus82.relatastor.io.Compression;
 import io.github.albertus82.relatastor.io.CountingInputStream;
 import io.github.albertus82.relatastor.jdbc.read.AbstractBlobAccessor;
@@ -50,13 +50,13 @@ import io.github.albertus82.relatastor.jdbc.write.BlobStoreParameters;
 import io.github.albertus82.relatastor.jdbc.write.PipeBasedBinaryStreamProvider;
 import io.github.albertus82.relatastor.util.UUIDUtils;
 
-/** Basic RDBMS-based implementation of a filestore. */
+/** Basic RDBMS-based implementation of a relatastor. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
-public class SimpleJdbcFileStore implements SimpleFileStore {
+public class RelatableJdbcStorage implements RelatableStorage {
 
 	private static final String SQL_ESCAPE = "\\";
 
-	private static final Logger log = Logger.getLogger(SimpleJdbcFileStore.class.getName());
+	private static final Logger log = Logger.getLogger(RelatableJdbcStorage.class.getName());
 
 	private final JdbcOperations jdbcOperations;
 	private final String table;
@@ -82,7 +82,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @see #withAlwaysQuotedIdentifiers(boolean)
 	 * @see #withBinaryStreamProvider(BinaryStreamProvider)
 	 */
-	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
+	public RelatableJdbcStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
 		this(jdbcOperations, table, blobExtractor, new PipeBasedBinaryStreamProvider(), Compression.NONE, false, null, null);
 	}
 
@@ -103,7 +103,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @param password the encryption/decryption password (can be null, so that
 	 *        neither encryption nor decryption will be performed).
 	 */
-	protected SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
+	protected RelatableJdbcStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
@@ -129,8 +129,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *
 	 * @return a new instance configured with the provided compression level.
 	 */
-	public SimpleJdbcFileStore withCompression(final Compression compression) {
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
+	public RelatableJdbcStorage withCompression(final Compression compression) {
+		return new RelatableJdbcStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -143,8 +143,8 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @return a new instance configured with the provided database identifier
 	 *         quoting strategy.
 	 */
-	public SimpleJdbcFileStore withAlwaysQuotedIdentifiers(final boolean alwaysQuotedIdentifiers) {
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, alwaysQuotedIdentifiers, this.schema, this.password);
+	public RelatableJdbcStorage withAlwaysQuotedIdentifiers(final boolean alwaysQuotedIdentifiers) {
+		return new RelatableJdbcStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -155,12 +155,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *
 	 * @return a new instance configured with the provided schema name.
 	 */
-	public SimpleJdbcFileStore withSchema(final String schema) {
+	public RelatableJdbcStorage withSchema(final String schema) {
 		Objects.requireNonNull(schema, "schema must not be null");
 		if (schema.isEmpty()) {
 			throw new IllegalArgumentException("schema must not be empty");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, schema, this.password);
+		return new RelatableJdbcStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, schema, this.password);
 	}
 
 	/**
@@ -170,12 +170,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *
 	 * @return a new instance with encryption/decryption support.
 	 */
-	public SimpleJdbcFileStore withEncryption(final char[] password) {
+	public RelatableJdbcStorage withEncryption(final char[] password) {
 		Objects.requireNonNull(password, "password must not be null");
 		if (password.length == 0) {
 			throw new IllegalArgumentException("password must not be empty");
 		}
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, password.clone());
+		return new RelatableJdbcStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, password.clone());
 	}
 
 	/**
@@ -186,9 +186,9 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 *
 	 * @return a new instance configured with the provided binary stream provider.
 	 */
-	public SimpleJdbcFileStore withBinaryStreamProvider(final BinaryStreamProvider binaryStreamProvider) {
+	public RelatableJdbcStorage withBinaryStreamProvider(final BinaryStreamProvider binaryStreamProvider) {
 		Objects.requireNonNull(binaryStreamProvider, "binaryStreamProvider must not be null");
-		return new SimpleJdbcFileStore(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
+		return new RelatableJdbcStorage(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -568,7 +568,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		/**
 		 * Returns an {@link InputStream} for reading the content, applying the
 		 * {@link BlobExtractor} strategy specified in the constructor of
-		 * {@link SimpleJdbcFileStore}.
+		 * {@link RelatableJdbcStorage}.
 		 *
 		 * @return an {@link InputStream} to read the file content
 		 */
