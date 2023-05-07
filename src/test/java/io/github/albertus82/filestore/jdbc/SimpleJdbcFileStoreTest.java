@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -141,7 +142,7 @@ class SimpleJdbcFileStoreTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.copy(null, null));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.copy("a", "b", null));
 
-		final var e = new FileBufferedBlobExtractor();
+		final FileBufferedBlobExtractor e = new FileBufferedBlobExtractor();
 		Assertions.assertThrows(NullPointerException.class, () -> e.withDirectory(null));
 
 		final DescriptiveResource dr = new DescriptiveResource("x");
@@ -550,38 +551,70 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	void testPut() throws IOException {
 		final SimpleFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
-		try (final InputStream is = new ByteArrayInputStream(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))) {
-			final var toSave = new InputStreamResource(is);
+		final Resource saved1;
+		try (final InputStream is = new ByteArrayInputStream("zxcvbnm".getBytes(StandardCharsets.UTF_8))) {
+			final Resource toSave = new InputStreamResource(is);
 			Assertions.assertThrows(IllegalArgumentException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.READ));
 			Assertions.assertThrows(UnsupportedOperationException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.DELETE_ON_CLOSE));
 			Assertions.assertThrows(UnsupportedOperationException.class, () -> store.put(toSave, "myfile.txt", StandardOpenOption.APPEND));
-			Assertions.assertDoesNotThrow(() -> store.put(toSave, "myfile.txt"));
+			saved1 = store.put(toSave, "myfile.txt");
 		}
 		// myfile.txt
+		final long lm = saved1.lastModified();
 		Assertions.assertEquals(1, store.list().size());
+		Assertions.assertTrue(lm > System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60));
+		Assertions.assertEquals(7, saved1.contentLength());
+		Assertions.assertEquals("myfile.txt", saved1.getFilename());
+		final URI uri = saved1.getURI();
+		Assertions.assertTrue(uri.toString().startsWith("urn:uuid:"));
+		try (final InputStream is = saved1.getInputStream()) {
+			Assertions.assertArrayEquals("zxcvbnm".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+		final Resource retrieved1 = store.get("myfile.txt");
+		Assertions.assertEquals(1, store.list().size());
+		Assertions.assertEquals(retrieved1.lastModified(), lm);
+		Assertions.assertEquals(retrieved1.contentLength(), saved1.contentLength());
+		Assertions.assertEquals(retrieved1.getFilename(), saved1.getFilename());
+		Assertions.assertEquals(retrieved1.getURI(), saved1.getURI());
+		try (final InputStream is = retrieved1.getInputStream()) {
+			Assertions.assertArrayEquals("zxcvbnm".getBytes(StandardCharsets.US_ASCII), is.readAllBytes());
+		}
+
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> store.put(new InputStreamResource(is), "myfile.txt"));
 		}
-		final Resource saved = store.put(new ByteArrayResource("qwertyuiop".getBytes(StandardCharsets.US_ASCII)), "myfile.txt", StandardOpenOption.TRUNCATE_EXISTING); // replace
-		try (final InputStream is2 = saved.getInputStream()) {
+		final Resource saved2 = store.put(new ByteArrayResource("qwertyuiop".getBytes(StandardCharsets.US_ASCII)), "myfile.txt", StandardOpenOption.TRUNCATE_EXISTING); // replace
+		try (final InputStream is2 = saved2.getInputStream()) {
 			Assertions.assertArrayEquals("qwertyuiop".getBytes(StandardCharsets.US_ASCII), is2.readAllBytes());
 		}
-		Assertions.assertNotNull(saved.getURI());
-		Assertions.assertNotEquals(0, saved.lastModified());
-		Assertions.assertEquals("myfile.txt", saved.getFilename());
-		Assertions.assertEquals(10, saved.contentLength());
+		Assertions.assertNotNull(saved2.getURI());
+		Assertions.assertNotEquals(0, saved2.lastModified());
+		Assertions.assertEquals("myfile.txt", saved2.getFilename());
+		Assertions.assertEquals(10, saved2.contentLength());
 		final Resource retrieved = store.get("myfile.txt");
-		Assertions.assertEquals(saved.getFilename(), retrieved.getFilename());
-		Assertions.assertEquals(saved.lastModified(), retrieved.lastModified());
-		Assertions.assertEquals(saved.contentLength(), retrieved.contentLength());
-		Assertions.assertEquals(saved.getURI(), retrieved.getURI());
+		Assertions.assertEquals(saved2.getFilename(), retrieved.getFilename());
+		Assertions.assertEquals(saved2.lastModified(), retrieved.lastModified());
+		Assertions.assertEquals(saved2.contentLength(), retrieved.contentLength());
+		Assertions.assertEquals(saved2.getURI(), retrieved.getURI());
 	}
 
 	@Test
-	void testPutLarge() throws Exception {
+	void testPutLargeParallel() throws Exception {
+		final DataSize fileSize = DataSize.ofMegabytes(16);
 		Path tempFile = null;
 		try {
-			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(16));
+			tempFile = TestUtils.createDummyFile(fileSize);
+			// Compute SHA-256 of the dummy file
+			final byte[] buffer0 = new byte[8192];
+			final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
+			try (final InputStream is = Files.newInputStream(tempFile)) {
+				int bytesCount = 0;
+				while ((bytesCount = is.read(buffer0)) != -1) {
+					digestSource.update(buffer0, 0, bytesCount);
+				}
+			}
+			final byte[] sha256Source = digestSource.digest();
+
 			final Path f = tempFile;
 			List.of(new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.LOW), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.HIGH)).parallelStream().forEach(be -> {
 				try {
@@ -594,13 +627,6 @@ class SimpleJdbcFileStoreTest {
 							}
 
 							final byte[] buffer = new byte[8192];
-							final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
-							try (final InputStream is = Files.newInputStream(f)) {
-								int bytesCount = 0;
-								while ((bytesCount = is.read(buffer)) != -1) {
-									digestSource.update(buffer, 0, bytesCount);
-								}
-							}
 							final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
 							final DatabaseResource dr = store.get(fileName);
 							try (final InputStream stored = dr.getInputStream()) {
@@ -609,11 +635,11 @@ class SimpleJdbcFileStoreTest {
 									digestStored.update(buffer, 0, bytesCount);
 								}
 							}
-							final byte[] sha256Source = digestSource.digest();
 							final byte[] sha256Stored = digestStored.digest();
 							Assertions.assertArrayEquals(sha256Source, sha256Stored);
 							Assertions.assertNotNull(dr.getUUID());
 							Assertions.assertNotNull(dr.getURI());
+							Assertions.assertEquals(fileSize.toBytes(), dr.contentLength());
 							final String uriStr = dr.getURI().toString();
 							Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
 							Assertions.assertEquals(dr.getUUID(), UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
@@ -636,9 +662,21 @@ class SimpleJdbcFileStoreTest {
 	@Test
 	@Transactional
 	void testPutLargeTransactional() throws Exception {
+		final DataSize fileSize = DataSize.ofMegabytes(16);
 		Path tempFile = null;
 		try {
-			tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(16));
+			tempFile = TestUtils.createDummyFile(fileSize);
+			// Compute SHA-256 of the dummy file
+			final byte[] buffer0 = new byte[8192];
+			final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
+			try (final InputStream is = Files.newInputStream(tempFile)) {
+				int bytesCount = 0;
+				while ((bytesCount = is.read(buffer0)) != -1) {
+					digestSource.update(buffer0, 0, bytesCount);
+				}
+			}
+			final byte[] sha256Source = digestSource.digest();
+
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
 				final SimpleJdbcFileStore store = new SimpleJdbcFileStore(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
@@ -647,13 +685,6 @@ class SimpleJdbcFileStoreTest {
 				}
 
 				final byte[] buffer = new byte[8192];
-				final MessageDigest digestSource = MessageDigest.getInstance("SHA-256");
-				try (final InputStream is = Files.newInputStream(tempFile)) {
-					int bytesCount = 0;
-					while ((bytesCount = is.read(buffer)) != -1) {
-						digestSource.update(buffer, 0, bytesCount);
-					}
-				}
 				final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
 				final DatabaseResource dr = store.get(fileName);
 				try (final InputStream stored = dr.getInputStream()) {
@@ -662,11 +693,12 @@ class SimpleJdbcFileStoreTest {
 						digestStored.update(buffer, 0, bytesCount);
 					}
 				}
-				final byte[] sha256Source = digestSource.digest();
 				final byte[] sha256Stored = digestStored.digest();
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
+				Assertions.assertEquals(fileName, dr.getFilename());
 				Assertions.assertNotNull(dr.getUUID());
 				Assertions.assertNotNull(dr.getURI());
+				Assertions.assertEquals(fileSize.toBytes(), dr.contentLength());
 				final String uriStr = dr.getURI().toString();
 				Assertions.assertTrue(uriStr.startsWith("urn:uuid:"));
 				Assertions.assertEquals(dr.getUUID(), UUID.fromString(uriStr.substring(uriStr.lastIndexOf(':') + 1)));
