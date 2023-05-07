@@ -9,12 +9,12 @@ import java.util.List;
 
 import org.springframework.core.io.Resource;
 
-/** Basic interface for storage operations. */
+/** Basic interface for relatastor operations. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public interface RelatableStorage {
 
 	/**
-	 * Gets a list of references to files in the storage.
+	 * Gets a list of references to files in the store.
 	 *
 	 * @param patterns one or more filter patterns that may also include {@code *}
 	 *        and {@code ?} wildcards (optional)
@@ -27,7 +27,7 @@ public interface RelatableStorage {
 	List<Resource> list(String... patterns) throws IOException;
 
 	/**
-	 * Gets a reference to the specified file in the storage.
+	 * Gets a reference to the specified file in the store.
 	 *
 	 * @param fileName the name of the desired file (unique key)
 	 *
