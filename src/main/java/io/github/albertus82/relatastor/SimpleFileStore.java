@@ -9,9 +9,9 @@ import java.util.List;
 
 import org.springframework.core.io.Resource;
 
-/** Basic interface for relatastor operations. */
+/** Basic interface for filestore operations. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
-public interface RelatableStorage {
+public interface SimpleFileStore {
 
 	/**
 	 * Gets a list of references to files in the store.

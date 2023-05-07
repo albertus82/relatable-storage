@@ -18,7 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
-import io.github.albertus82.relatastor.RelatableStorage;
+import io.github.albertus82.relatastor.SimpleFileStore;
 import io.github.albertus82.relatastor.TestUtils;
 import io.github.albertus82.relatastor.jdbc.read.FileBufferedBlobExtractor;
 
@@ -44,7 +44,7 @@ class SampleCodeTest {
 	@Test
 	void test() throws IOException {
 		DataSource dataSource = new DriverManagerDataSource(jdbcUrl);
-		RelatableStorage store = new RelatableJdbcStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
+		SimpleFileStore store = new SimpleJdbcFileStore(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
 		store.put(new PathResource(tempFile), "myStoredFile.ext");
 		Resource resource = store.get("myStoredFile.ext");
 		byte[] bytes = resource.getInputStream().readAllBytes();

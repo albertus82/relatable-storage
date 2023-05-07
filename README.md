@@ -1,14 +1,14 @@
-Relatable Storage
-=================
+Simple JDBC Filestore
+=====================
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/relatable-storage)](https://mvnrepository.com/artifact/io.github.albertus82/relatable-storage)
 [![Build](https://github.com/albertus82/relatable-storage/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/relatable-storage/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/relatable-storage/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/relatable-storage?targetFile=pom.xml)
 
-### Java library implementing a basic RDBMS-based file storage with compression and encryption support.
+### Basic RDBMS-based filestore Java library with compression and encryption support.
 
 * The files are always stored internally in ZIP format in order to get CRC-32 check and AES encryption for free.
-   * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/relatastor/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/relatastor/io/Compression.java#L18).
+   * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/filestore/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/filestore/io/Compression.java#L18).
    * Compression and encryption are transparent for the client, so no manual *unzip* is needed.
    * The `CONTENT_LENGTH` value represents the *original uncompressed size* of the object, it is NOT the BLOB length.
 * This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being `FILENAME` a object key string of up to 1,024 characters with no constraints other than uniqueness, you can use common prefixes (like `foo/`, `bar/`) to organize your objects simulating a hierarchical structure. For more info, you can check the [Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) because the semantics are similar.
@@ -57,4 +57,4 @@ Resource resource = store.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
 ```
 
-See also [SampleCodeTest](src/test/java/io/github/albertus82/relatastor/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
+See also [SampleCodeTest](src/test/java/io/github/albertus82/filestore/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
