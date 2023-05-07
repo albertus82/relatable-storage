@@ -75,6 +75,12 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 	 * @param table the database table name (see also
 	 *        {@link #withAlwaysQuotedIdentifiers(boolean)})
 	 * @param blobExtractor the BLOB extraction strategy
+	 *
+	 * @see #withSchema(String)
+	 * @see #withCompression(Compression)
+	 * @see #withEncryption(char[])
+	 * @see #withAlwaysQuotedIdentifiers(boolean)
+	 * @see #withBinaryStreamProvider(BinaryStreamProvider)
 	 */
 	public SimpleJdbcFileStore(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
 		this(jdbcOperations, table, blobExtractor, new PipeBasedBinaryStreamProvider(), Compression.NONE, false, null, null);
