@@ -50,7 +50,7 @@ import io.github.albertus82.relatastor.jdbc.write.BlobStoreParameters;
 import io.github.albertus82.relatastor.jdbc.write.PipeBasedBinaryStreamProvider;
 import io.github.albertus82.relatastor.util.UUIDUtils;
 
-/** Basic RDBMS-based implementation of a relatastor. */
+/** Basic RDBMS-based implementation of a file storage. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
 public class RelatableJdbcStorage implements RelatableStorage {
 
