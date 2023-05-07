@@ -19,6 +19,8 @@ public class DirectBlobExtractor implements BlobExtractor {
 	/**
 	 * Creates a new instance of this extractor that uses {@link ZipStreamDecoder}
 	 * to decode the BLOB contents.
+	 *
+	 * @see #DirectBlobExtractor(DirectStreamDecoder)
 	 */
 	public DirectBlobExtractor() {
 		this(new ZipStreamDecoder());

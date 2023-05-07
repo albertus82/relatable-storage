@@ -12,7 +12,7 @@ public class BlobStoreParameters {
 
 	/**
 	 * Creates a new instance initialized with the provided parameters.
-	 * 
+	 *
 	 * @param compression the compression level to apply to the data
 	 * @param password the password to be used to encrypt data (null for no
 	 *        encryption)
@@ -24,7 +24,7 @@ public class BlobStoreParameters {
 
 	/**
 	 * Returns the compression level to apply to the data.
-	 * 
+	 *
 	 * @return the compression level to apply to the data
 	 */
 	public Compression getCompression() {
@@ -33,9 +33,11 @@ public class BlobStoreParameters {
 
 	/**
 	 * Returns whether the data must be encrypted or not.
-	 * 
+	 *
 	 * @return {@code true} if the data must be stored in encrypted form, otherwise
 	 *         {@code false}.
+	 *
+	 * @see #getPassword()
 	 */
 	public boolean isEncryptionRequired() {
 		return password != null;
@@ -43,8 +45,10 @@ public class BlobStoreParameters {
 
 	/**
 	 * Returns the password to be used to encrypt data.
-	 * 
+	 *
 	 * @return the password to be used to encrypt data
+	 *
+	 * @see #isEncryptionRequired()
 	 */
 	public char[] getPassword() {
 		return password != null ? password.clone() : null;

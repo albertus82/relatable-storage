@@ -22,6 +22,8 @@ public class MemoryBufferedBinaryStreamProvider implements BinaryStreamProvider 
 	/**
 	 * Creates a new instance of this provider that uses {@link ZipStreamEncoder} to
 	 * encode data.
+	 *
+	 * @see #MemoryBufferedBinaryStreamProvider(IndirectStreamEncoder)
 	 */
 	public MemoryBufferedBinaryStreamProvider() {
 		this(new ZipStreamEncoder());

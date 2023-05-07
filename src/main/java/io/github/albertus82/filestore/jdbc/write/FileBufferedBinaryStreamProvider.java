@@ -29,6 +29,9 @@ public class FileBufferedBinaryStreamProvider implements BinaryStreamProvider {
 	 * directory whose name corresponds to the value of the {@code java.io.tmpdir}
 	 * system property (usually it's the default system temp dir) and uses
 	 * {@link ZipStreamEncoder} to encode data.
+	 *
+	 * @see #withDirectory(Path)
+	 * @see #withEncoder(IndirectStreamEncoder)
 	 */
 	public FileBufferedBinaryStreamProvider() {
 		this(Path.of(System.getProperty("java.io.tmpdir")), new ZipStreamEncoder());
@@ -60,7 +63,7 @@ public class FileBufferedBinaryStreamProvider implements BinaryStreamProvider {
 
 	/**
 	 * Creates a new instance of this provider.
-	 * 
+	 *
 	 * @param directory the directory in which temporary files will be stored
 	 * @param encoder the stream encoder that will be used to to encode data
 	 */

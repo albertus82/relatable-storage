@@ -41,6 +41,10 @@ public class FileBufferedBlobExtractor implements BlobExtractor {
 	 * system property (usually it is the default system temp dir) without applying
 	 * any compression, and using {@link ZipStreamDecoder} to decode the BLOB
 	 * contents.
+	 *
+	 * @see #withDirectory(Path)
+	 * @see #withCompression(Compression)
+	 * @see #withDecoder(DirectStreamDecoder)
 	 */
 	public FileBufferedBlobExtractor() {
 		this(Path.of(System.getProperty("java.io.tmpdir")), Compression.NONE, new ZipStreamDecoder());

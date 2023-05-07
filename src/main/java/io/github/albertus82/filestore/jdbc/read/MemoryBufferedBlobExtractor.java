@@ -30,6 +30,9 @@ public class MemoryBufferedBlobExtractor implements BlobExtractor {
 	 * Creates a new instance of this extractor that buffers the entire BLOB content
 	 * in memory without applying any compression, and uses {@link ZipStreamDecoder}
 	 * to decode the BLOB contents.
+	 *
+	 * @see #withCompression(Compression)
+	 * @see #withDecoder(DirectStreamDecoder)
 	 */
 	public MemoryBufferedBlobExtractor() {
 		this(Compression.NONE, new ZipStreamDecoder());

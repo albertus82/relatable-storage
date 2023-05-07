@@ -25,6 +25,9 @@ public class PipeBasedBinaryStreamProvider implements BinaryStreamProvider {
 	/**
 	 * Creates a new instance of this provider with the default pipe size and that
 	 * uses {@link ZipStreamEncoder} to encode data.
+	 *
+	 * @see #withPipeSize(int)
+	 * @see #withEncoder(IndirectStreamEncoder)
 	 */
 	public PipeBasedBinaryStreamProvider() {
 		this(DEFAULT_PIPE_SIZE, new ZipStreamEncoder());
@@ -56,7 +59,7 @@ public class PipeBasedBinaryStreamProvider implements BinaryStreamProvider {
 
 	/**
 	 * Creates a new instance of this provider.
-	 * 
+	 *
 	 * @param pipeSize the size of the pipe's buffer
 	 * @param encoder the stream encoder that will be used to to encode data
 	 */

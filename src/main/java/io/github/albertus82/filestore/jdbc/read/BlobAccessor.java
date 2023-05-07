@@ -46,6 +46,8 @@ public interface BlobAccessor {
 	 * Returns whether the BLOB content is encrypted or not.
 	 *
 	 * @return {@code true} if BLOB content is encrypted, otherwise {@code false}.
+	 *
+	 * @see #getPassword()
 	 */
 	boolean isEncrypted();
 
@@ -55,6 +57,8 @@ public interface BlobAccessor {
 	 *
 	 * @return the password needed to decrypt the BLOB content, or null if no
 	 *         password is needed.
+	 *
+	 * @see #isEncrypted()
 	 */
 	char[] getPassword();
 
