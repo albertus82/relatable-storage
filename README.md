@@ -1,14 +1,14 @@
-Simple JDBC Filestore
-=====================
+Relatable Storage
+=================
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/simple-jdbc-filestore)](https://mvnrepository.com/artifact/io.github.albertus82/simple-jdbc-filestore)
-[![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
-[![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82.storage/relatable-storage)](https://mvnrepository.com/artifact/io.github.albertus82.storage/relatable-storage)
+[![Build](https://github.com/albertus82/relatable-storage/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/relatable-storage/actions)
+[![Known Vulnerabilities](https://snyk.io/test/github/albertus82/relatable-storage/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/relatable-storage?targetFile=pom.xml)
 
-### Basic RDBMS-based filestore Java library with compression and encryption support.
+### Java library to implement a basic RDBMS-based file storage with compression and encryption support
 
 * The files are always stored internally in ZIP format in order to get CRC-32 check and AES encryption for free.
-   * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/filestore/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/filestore/io/Compression.java#L18).
+   * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/storage/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/storage/io/Compression.java#L18).
    * Compression and encryption are transparent for the client, so no manual *unzip* is needed.
    * The `CONTENT_LENGTH` value represents the *original uncompressed size* of the object, it is NOT the BLOB length.
 * This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being `FILENAME` a object key string of up to 1,024 characters with no constraints other than uniqueness, you can use common prefixes (like `foo/`, `bar/`) to organize your objects simulating a hierarchical structure. For more info, you can check the [Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) because the semantics are similar.
@@ -26,8 +26,8 @@ Simple JDBC Filestore
 
 ```xml
 <dependency>
-    <groupId>io.github.albertus82</groupId>
-    <artifactId>simple-jdbc-filestore</artifactId>
+    <groupId>io.github.albertus82.storage</groupId>
+    <artifactId>relatable-storage</artifactId>
     <version>0.1.0</version>
 </dependency>
 ```
@@ -51,10 +51,10 @@ CREATE TABLE storage (
 
 ```java
 DataSource dataSource = new DriverManagerDataSource("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"); // replace with your connection string or connection pool
-SimpleFileStore store = new SimpleJdbcFileStore(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
-store.put(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // the last argument can be prefixed to simulate a hierarchical structure
-Resource resource = store.get("myStoredFile.ext");
+StorageOperations storage = new RelatableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
+storage.put(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // the last argument can be prefixed to simulate a hierarchical structure
+Resource resource = storage.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
 ```
 
-See also [SampleCodeTest](src/test/java/io/github/albertus82/filestore/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
+See also [SampleCodeTest](src/test/java/io/github/albertus82/storage/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
