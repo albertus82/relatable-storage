@@ -1,9 +1,9 @@
 Simple JDBC Filestore
 =====================
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/simple-jdbc-filestore)](https://mvnrepository.com/artifact/io.github.albertus82/simple-jdbc-filestore)
-[![Build](https://github.com/albertus82/simple-jdbc-filestore/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/simple-jdbc-filestore/actions)
-[![Known Vulnerabilities](https://snyk.io/test/github/albertus82/simple-jdbc-filestore/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/simple-jdbc-filestore?targetFile=pom.xml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82/relatable-storage)](https://mvnrepository.com/artifact/io.github.albertus82/relatable-storage)
+[![Build](https://github.com/albertus82/relatable-storage/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/relatable-storage/actions)
+[![Known Vulnerabilities](https://snyk.io/test/github/albertus82/relatable-storage/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/relatable-storage?targetFile=pom.xml)
 
 ### Basic RDBMS-based filestore Java library with compression and encryption support.
 
@@ -27,7 +27,7 @@ Simple JDBC Filestore
 ```xml
 <dependency>
     <groupId>io.github.albertus82</groupId>
-    <artifactId>simple-jdbc-filestore</artifactId>
+    <artifactId>relatable-storage</artifactId>
     <version>0.1.0</version>
 </dependency>
 ```
