@@ -566,7 +566,7 @@ public class SimpleJdbcFileStore implements SimpleFileStore {
 		}
 
 		/**
-		 * Returns an {@link InputStream} for the content, applying the
+		 * Returns an {@link InputStream} for reading the content, applying the
 		 * {@link BlobExtractor} strategy specified in the constructor of
 		 * {@link SimpleJdbcFileStore}.
 		 *
