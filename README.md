@@ -1,4 +1,4 @@
-Relatable Storage
+RelaTable Storage
 =================
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.albertus82.storage/relatable-storage)](https://mvnrepository.com/artifact/io.github.albertus82.storage/relatable-storage)
