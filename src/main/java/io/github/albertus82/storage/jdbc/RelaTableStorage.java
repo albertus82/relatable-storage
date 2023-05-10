@@ -567,8 +567,8 @@ public class RelaTableStorage implements StorageOperations {
 
 		/**
 		 * Returns an {@link InputStream} for reading the content, applying the
-		 * {@link BlobExtractor} strategy specified in the constructor of
-		 * {@link RelaTableStorage}.
+		 * {@link BlobExtractor} strategy specified in
+		 * {@link RelaTableStorage#RelaTableStorage(JdbcOperations, String, BlobExtractor)}
 		 *
 		 * @return an {@link InputStream} to read the file content
 		 */
