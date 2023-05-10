@@ -29,7 +29,7 @@ import org.springframework.util.unit.DataSize;
 import io.github.albertus82.storage.TestConfig;
 import io.github.albertus82.storage.TestUtils;
 import io.github.albertus82.storage.io.Compression;
-import io.github.albertus82.storage.jdbc.RelatableStorage.DatabaseResource;
+import io.github.albertus82.storage.jdbc.RelaTableStorage.DatabaseResource;
 import io.github.albertus82.storage.jdbc.read.FileBufferedBlobExtractor;
 import io.github.albertus82.storage.jdbc.read.MemoryBufferedBlobExtractor;
 import io.github.albertus82.storage.jdbc.write.MemoryBufferedBinaryStreamProvider;
@@ -76,56 +76,56 @@ class PerformanceTest {
 	@Test
 	void inMemory() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()));
 	}
 
 	@Test
 	void inMemoryWithEncryption() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withEncryption("testpass".toCharArray()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withEncryption("testpass".toCharArray()));
 	}
 
 	@Test
 	void inMemoryWithCompression() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withCompression(Compression.LOW));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withCompression(Compression.LOW));
 	}
 
 	@Test
 	void inMemoryWithCompressionAndEncryption() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withCompression(Compression.LOW).withEncryption("testpass".toCharArray()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new MemoryBufferedBlobExtractor()).withBinaryStreamProvider(new MemoryBufferedBinaryStreamProvider()).withCompression(Compression.LOW).withEncryption("testpass".toCharArray()));
 	}
 
 	@Test
 	void onDisk() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()));
 	}
 
 	@Test
 	void onDiskWithEncryption() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withEncryption("testpass".toCharArray()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withEncryption("testpass".toCharArray()));
 	}
 
 	@Test
 	void onDiskWithCompression() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withCompression(Compression.LOW));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withCompression(Compression.LOW));
 	}
 
 	@Test
 	void onDiskWithCompressionAndEncryption() {
 		logStart(Thread.currentThread().getStackTrace()[1].getMethodName());
-		test(new RelatableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withCompression(Compression.LOW).withEncryption("testpass".toCharArray()));
+		test(new RelaTableStorage(jdbcTemplate, TABLE_NAME, new FileBufferedBlobExtractor()).withCompression(Compression.LOW).withEncryption("testpass".toCharArray()));
 	}
 
 	private static void logStart(final String methodName) {
 		System.out.printf("**** %s **", methodName);
 	}
 
-	private void test(final RelatableStorage store) {
+	private void test(final RelaTableStorage store) {
 		for (byte i = 1; i <= ITERATION_COUNT; i++) {
 			Path tempFile = null;
 			try {

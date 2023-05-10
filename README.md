@@ -51,7 +51,7 @@ CREATE TABLE storage (
 
 ```java
 DataSource dataSource = new DriverManagerDataSource("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"); // replace with your connection string or connection pool
-StorageOperations storage = new RelatableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
+StorageOperations storage = new RelaTableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
 storage.put(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // the second argument can be prefixed to simulate a hierarchical structure
 Resource resource = storage.get("myStoredFile.ext");
 byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!

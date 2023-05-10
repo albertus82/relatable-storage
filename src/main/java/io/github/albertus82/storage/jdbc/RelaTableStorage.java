@@ -52,11 +52,11 @@ import io.github.albertus82.storage.util.UUIDUtils;
 
 /** Basic RDBMS-based implementation of a file storage. */
 @SuppressWarnings("java:S1130") // "throws" declarations should not be superfluous
-public class RelatableStorage implements StorageOperations {
+public class RelaTableStorage implements StorageOperations {
 
 	private static final String SQL_ESCAPE = "\\";
 
-	private static final Logger log = Logger.getLogger(RelatableStorage.class.getName());
+	private static final Logger log = Logger.getLogger(RelaTableStorage.class.getName());
 
 	private final JdbcOperations jdbcOperations;
 	private final String table;
@@ -82,7 +82,7 @@ public class RelatableStorage implements StorageOperations {
 	 * @see #withAlwaysQuotedIdentifiers(boolean)
 	 * @see #withBinaryStreamProvider(BinaryStreamProvider)
 	 */
-	public RelatableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
+	public RelaTableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor) {
 		this(jdbcOperations, table, blobExtractor, new PipeBasedBinaryStreamProvider(), Compression.NONE, false, null, null);
 	}
 
@@ -103,7 +103,7 @@ public class RelatableStorage implements StorageOperations {
 	 * @param password the encryption/decryption password (can be null, so that
 	 *        neither encryption nor decryption will be performed).
 	 */
-	protected RelatableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
+	protected RelaTableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
@@ -129,8 +129,8 @@ public class RelatableStorage implements StorageOperations {
 	 *
 	 * @return a new instance configured with the provided compression level.
 	 */
-	public RelatableStorage withCompression(final Compression compression) {
-		return new RelatableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
+	public RelaTableStorage withCompression(final Compression compression) {
+		return new RelaTableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -143,8 +143,8 @@ public class RelatableStorage implements StorageOperations {
 	 * @return a new instance configured with the provided database identifier
 	 *         quoting strategy.
 	 */
-	public RelatableStorage withAlwaysQuotedIdentifiers(final boolean alwaysQuotedIdentifiers) {
-		return new RelatableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, alwaysQuotedIdentifiers, this.schema, this.password);
+	public RelaTableStorage withAlwaysQuotedIdentifiers(final boolean alwaysQuotedIdentifiers) {
+		return new RelaTableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -155,12 +155,12 @@ public class RelatableStorage implements StorageOperations {
 	 *
 	 * @return a new instance configured with the provided schema name.
 	 */
-	public RelatableStorage withSchema(final String schema) {
+	public RelaTableStorage withSchema(final String schema) {
 		Objects.requireNonNull(schema, "schema must not be null");
 		if (schema.isEmpty()) {
 			throw new IllegalArgumentException("schema must not be empty");
 		}
-		return new RelatableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, schema, this.password);
+		return new RelaTableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, schema, this.password);
 	}
 
 	/**
@@ -170,12 +170,12 @@ public class RelatableStorage implements StorageOperations {
 	 *
 	 * @return a new instance with encryption/decryption support.
 	 */
-	public RelatableStorage withEncryption(final char[] password) {
+	public RelaTableStorage withEncryption(final char[] password) {
 		Objects.requireNonNull(password, "password must not be null");
 		if (password.length == 0) {
 			throw new IllegalArgumentException("password must not be empty");
 		}
-		return new RelatableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, password.clone());
+		return new RelaTableStorage(this.jdbcOperations, this.table, this.blobExtractor, this.binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, password.clone());
 	}
 
 	/**
@@ -186,9 +186,9 @@ public class RelatableStorage implements StorageOperations {
 	 *
 	 * @return a new instance configured with the provided binary stream provider.
 	 */
-	public RelatableStorage withBinaryStreamProvider(final BinaryStreamProvider binaryStreamProvider) {
+	public RelaTableStorage withBinaryStreamProvider(final BinaryStreamProvider binaryStreamProvider) {
 		Objects.requireNonNull(binaryStreamProvider, "binaryStreamProvider must not be null");
-		return new RelatableStorage(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
+		return new RelaTableStorage(this.jdbcOperations, this.table, this.blobExtractor, binaryStreamProvider, this.compression, this.alwaysQuotedIdentifiers, this.schema, this.password);
 	}
 
 	/**
@@ -568,7 +568,7 @@ public class RelatableStorage implements StorageOperations {
 		/**
 		 * Returns an {@link InputStream} for reading the content, applying the
 		 * {@link BlobExtractor} strategy specified in the constructor of
-		 * {@link RelatableStorage}.
+		 * {@link RelaTableStorage}.
 		 *
 		 * @return an {@link InputStream} to read the file content
 		 */

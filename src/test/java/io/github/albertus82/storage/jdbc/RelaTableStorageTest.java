@@ -47,7 +47,7 @@ import io.github.albertus82.storage.StorageOperations;
 import io.github.albertus82.storage.TestConfig;
 import io.github.albertus82.storage.TestUtils;
 import io.github.albertus82.storage.io.Compression;
-import io.github.albertus82.storage.jdbc.RelatableStorage.DatabaseResource;
+import io.github.albertus82.storage.jdbc.RelaTableStorage.DatabaseResource;
 import io.github.albertus82.storage.jdbc.read.BlobExtractor;
 import io.github.albertus82.storage.jdbc.read.DirectBlobExtractor;
 import io.github.albertus82.storage.jdbc.read.FileBufferedBlobExtractor;
@@ -58,7 +58,7 @@ import io.github.albertus82.storage.jdbc.write.MemoryBufferedBinaryStreamProvide
 import io.github.albertus82.storage.jdbc.write.PipeBasedBinaryStreamProvider;
 
 @SpringJUnitConfig(TestConfig.class)
-class RelatableJdbcStorageTest {
+class RelaTableStorageTest {
 
 	private static final boolean DEBUG = false;
 
@@ -112,15 +112,15 @@ class RelatableJdbcStorageTest {
 	void testApiBehaviour() throws IOException {
 		final FileBufferedBlobExtractor fbbe = new FileBufferedBlobExtractor();
 
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(null, null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(jdbcTemplate, null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(jdbcTemplate, "STORAGE", null));
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(jdbcTemplate, null, fbbe));
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(null, "STORAGE", null));
-		Assertions.assertThrows(NullPointerException.class, () -> new RelatableStorage(null, null, fbbe));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> new RelatableStorage(jdbcTemplate, "", fbbe));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(null, null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(jdbcTemplate, null, null));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(jdbcTemplate, "STORAGE", null));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(jdbcTemplate, null, fbbe));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(null, "STORAGE", null));
+		Assertions.assertThrows(NullPointerException.class, () -> new RelaTableStorage(null, null, fbbe));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> new RelaTableStorage(jdbcTemplate, "", fbbe));
 
-		final RelatableStorage s1 = new RelatableStorage(jdbcTemplate, "STORAGE", fbbe);
+		final RelaTableStorage s1 = new RelaTableStorage(jdbcTemplate, "STORAGE", fbbe);
 		Assertions.assertThrows(NullPointerException.class, () -> s1.withCompression(null));
 		Assertions.assertThrows(NullPointerException.class, () -> s1.withEncryption(null));
 		Assertions.assertThrows(NullPointerException.class, () -> s1.withSchema(null));
@@ -128,7 +128,7 @@ class RelatableJdbcStorageTest {
 		Assertions.assertThrows(IllegalArgumentException.class, () -> s1.withSchema(""));
 		Assertions.assertDoesNotThrow(() -> s1.withSchema("SCHEMA"));
 
-		final StorageOperations s2 = new RelatableStorage(jdbcTemplate, "STORAGE", fbbe).withCompression(Compression.MEDIUM);
+		final StorageOperations s2 = new RelaTableStorage(jdbcTemplate, "STORAGE", fbbe).withCompression(Compression.MEDIUM);
 		Assertions.assertDoesNotThrow(() -> s2.list());
 		Assertions.assertNotNull(s2.list());
 		Assertions.assertThrows(NullPointerException.class, () -> s2.delete(null));
@@ -151,7 +151,7 @@ class RelatableJdbcStorageTest {
 		Assertions.assertThrows(NullPointerException.class, () -> s2.put(null, null));
 		Assertions.assertThrows(NullPointerException.class, () -> s2.put(dr, "y", null));
 
-		final RelatableStorage s3 = new RelatableStorage(jdbcTemplate, "StORaGe", fbbe);
+		final RelaTableStorage s3 = new RelaTableStorage(jdbcTemplate, "StORaGe", fbbe);
 		Assertions.assertEquals("StORaGe", s3.getTable());
 		Assertions.assertEquals(Optional.empty(), s3.getSchema());
 		Assertions.assertEquals(Compression.NONE, s3.getCompression());
@@ -171,7 +171,7 @@ class RelatableJdbcStorageTest {
 		try {
 			jdbcTemplate.execute("CREATE TABLE qwerty.asdfgh AS (SELECT * FROM storage WHERE 0=1)");
 			try {
-				final RelatableStorage store = new RelatableStorage(jdbcTemplate, "ASDFGH", new FileBufferedBlobExtractor()).withCompression(Compression.LOW).withSchema("QWERTY");
+				final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "ASDFGH", new FileBufferedBlobExtractor()).withCompression(Compression.LOW).withSchema("QWERTY");
 				Assertions.assertEquals(0, store.list().size());
 				try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 					final Resource toSave = new InputStreamResource(is);
@@ -190,7 +190,7 @@ class RelatableJdbcStorageTest {
 
 	@Test
 	void testList() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH).withAlwaysQuotedIdentifiers(false);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.HIGH).withAlwaysQuotedIdentifiers(false);
 		Assertions.assertEquals(0, store.list().size());
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave = new InputStreamResource(is);
@@ -201,7 +201,7 @@ class RelatableJdbcStorageTest {
 
 	@Test
 	void testListWithFilters() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM)).withAlwaysQuotedIdentifiers(true).withCompression(Compression.MEDIUM);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM)).withAlwaysQuotedIdentifiers(true).withCompression(Compression.MEDIUM);
 		Assertions.assertEquals(0, store.list().size());
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			store.put(new InputStreamResource(is), "foo.txt");
@@ -274,7 +274,7 @@ class RelatableJdbcStorageTest {
 
 	@Test
 	void testMove() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave1 = new InputStreamResource(is);
 			store.put(toSave1, "foo.txt", StandardOpenOption.TRUNCATE_EXISTING); // insert (and replace... nothing)
@@ -327,7 +327,7 @@ class RelatableJdbcStorageTest {
 	@Test
 	@Transactional
 	void testMoveTransactional() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		final Resource storedFoo;
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave1 = new InputStreamResource(is);
@@ -362,7 +362,7 @@ class RelatableJdbcStorageTest {
 
 	@Test
 	void testCopy() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.MEDIUM);
 		final Resource saved1;
 		try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 			final Resource toSave1 = new InputStreamResource(is);
@@ -417,7 +417,7 @@ class RelatableJdbcStorageTest {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.NONE), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.MEDIUM) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
-					final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
+					final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
 					try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 						store.put(new InputStreamResource(is), "myfile.txt");
 					}
@@ -460,7 +460,7 @@ class RelatableJdbcStorageTest {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.MEDIUM), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.MEDIUM) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
-					final RelatableStorage store = new RelatableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("TestPassword0$".toCharArray());
+					final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("TestPassword0$".toCharArray());
 					try (final InputStream is = getClass().getResourceAsStream("10b.txt")) {
 						store.put(new InputStreamResource(is), "myfile.txt");
 					}
@@ -503,7 +503,7 @@ class RelatableJdbcStorageTest {
 		for (final BlobExtractor be : new BlobExtractor[] { new FileBufferedBlobExtractor(), new FileBufferedBlobExtractor().withCompression(Compression.HIGH), new MemoryBufferedBlobExtractor(), new MemoryBufferedBlobExtractor().withCompression(Compression.LOW) }) {
 			for (final Compression compression : Compression.values()) {
 				for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
-					final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
+					final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp);
 					Path tempFile = null;
 					try {
 						tempFile = Files.createTempFile(null, null);
@@ -550,7 +550,7 @@ class RelatableJdbcStorageTest {
 
 	@Test
 	void testPut() throws IOException {
-		final StorageOperations store = new RelatableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
+		final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new FileBufferedBlobExtractor()).withCompression(Compression.LOW);
 		final Resource saved1;
 		try (final InputStream is = new ByteArrayInputStream("zxcvbnm".getBytes(StandardCharsets.UTF_8))) {
 			final Resource toSave = new InputStreamResource(is);
@@ -621,7 +621,7 @@ class RelatableJdbcStorageTest {
 					for (final Compression compression : Compression.values()) {
 						for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
 							final String fileName = UUID.randomUUID().toString();
-							final RelatableStorage store = new RelatableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("testpass".toCharArray());
+							final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("testpass".toCharArray());
 							try (final InputStream is = Files.newInputStream(f)) {
 								Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), fileName));
 							}
@@ -679,7 +679,7 @@ class RelatableJdbcStorageTest {
 
 			for (final Compression compression : Compression.values()) {
 				final String fileName = UUID.randomUUID().toString();
-				final RelatableStorage store = new RelatableStorage(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
+				final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
 				try (final InputStream is = Files.newInputStream(tempFile)) {
 					Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), fileName));
 				}

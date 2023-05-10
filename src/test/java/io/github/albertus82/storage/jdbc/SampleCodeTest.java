@@ -44,7 +44,7 @@ class SampleCodeTest {
 	@Test
 	void test() throws IOException {
 		DataSource dataSource = new DriverManagerDataSource(jdbcUrl);
-		StorageOperations store = new RelatableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
+		StorageOperations store = new RelaTableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
 		store.put(new PathResource(tempFile), "myStoredFile.ext");
 		Resource resource = store.get("myStoredFile.ext");
 		byte[] bytes = resource.getInputStream().readAllBytes();
