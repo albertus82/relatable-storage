@@ -7,7 +7,7 @@ RelaTable Storage
 
 ### Java library to implement a RDBMS-based file storage with compression and encryption support
 
-* Files are always stored internally in ZIP format in order to get CRC-32 check and AES encryption for free.
+* Files are always stored internally in ZIP format in order to get CRC-32 check, compression and AES encryption for free.
    * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/storage/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/storage/io/Compression.java#L18).
    * Compression and encryption are transparent for the client, so no manual *unzip* is needed.
    * The `CONTENT_LENGTH` value represents the *original uncompressed size* of the object, it is NOT the BLOB length.
