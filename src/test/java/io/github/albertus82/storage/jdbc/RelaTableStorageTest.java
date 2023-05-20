@@ -15,9 +15,13 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
@@ -61,6 +65,8 @@ import io.github.albertus82.storage.jdbc.write.PipeBasedBinaryStreamProvider;
 class RelaTableStorageTest {
 
 	private static final boolean DEBUG = false;
+
+	private static final Logger log = Logger.getLogger(RelaTableStorageTest.class.getName());
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -706,6 +712,42 @@ class RelaTableStorageTest {
 		}
 		finally {
 			TestUtils.deleteIfExists(tempFile);
+		}
+	}
+
+	@Test
+	void testReproducibleBlobs() throws Exception {
+		short i = 0;
+		for (final Compression c : Compression.values()) {
+			final byte iterations = 2;
+			final byte[] magic = "PK".getBytes(StandardCharsets.US_ASCII);
+
+			final StorageOperations store = new RelaTableStorage(jdbcTemplate, "STORAGE", new MemoryBufferedBlobExtractor()).withCompression(c);
+
+			final ByteArrayResource r0 = new ByteArrayResource(TestUtils.createDummyByteArray(DataSize.ofMegabytes(1)));
+
+			final Set<Resource> resources = new LinkedHashSet<>();
+			for (byte j = 0; j < iterations; j++) {
+				log.log(Level.INFO, "PUT {0} {1}", new Object[] { i, c });
+				resources.add(store.put(r0, "" + ++i));
+				TimeUnit.SECONDS.sleep(2); // NOSONAR the built-in timestamp resolution of files in a .ZIP archive is two seconds
+			}
+			Assertions.assertEquals(iterations, resources.size());
+
+			final List<byte[]> blobs = new ArrayList<>();
+			for (final Resource r : resources) {
+				blobs.add(jdbcTemplate.queryForObject("select FILE_CONTENTS from STORAGE where FILENAME=?", byte[].class, r.getFilename()));
+			}
+			Assertions.assertEquals(iterations, blobs.size());
+			for (final byte[] blob : blobs) {
+				log.log(Level.INFO, "SIZE {0} {1}", new Object[] { c, blob.length });
+				Assertions.assertArrayEquals(magic, Arrays.copyOf(blob, magic.length));
+			}
+
+			for (byte j = 0; j < iterations - 1; j++) {
+				log.log(Level.INFO, "CMP {0}", j);
+				Assertions.assertArrayEquals(blobs.get(j), blobs.get(j + 1));
+			}
 		}
 	}
 

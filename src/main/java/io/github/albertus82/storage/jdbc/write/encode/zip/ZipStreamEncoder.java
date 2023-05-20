@@ -3,9 +3,9 @@ package io.github.albertus82.storage.jdbc.write.encode.zip;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.time.Instant;
+import java.time.Month;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import java.time.ZonedDateTime;
 import java.util.Objects;
 
 import io.github.albertus82.storage.io.Compression;
@@ -23,7 +23,8 @@ import net.lingala.zip4j.model.enums.EncryptionMethod;
  */
 public class ZipStreamEncoder implements IndirectStreamEncoder {
 
-	private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").withZone(ZoneOffset.UTC);
+	private static final long FILE_TIME = ZonedDateTime.of(2001, Month.JANUARY.getValue(), 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant().toEpochMilli();
+	private static final String FILE_NAME = "0";
 
 	/** Default empty constructor. */
 	public ZipStreamEncoder() { /* Javadoc */ }
@@ -43,8 +44,9 @@ public class ZipStreamEncoder implements IndirectStreamEncoder {
 	private static ZipParameters toZipParameters(final BlobStoreParameters parameters) {
 		Objects.requireNonNull(parameters, "parameters must not be null");
 		final ZipParameters zp = new ZipParameters();
+		zp.setLastModifiedFileTime(FILE_TIME); // Make ZIP files reproducible to allow deduplication if supported by the DBMS
 		zp.setCompressionLevel(toZipCompressionLevel(parameters.getCompression()));
-		zp.setFileNameInZip(dateTimeFormatter.format(Instant.now()) + ".dat"); // This file name will not be used anywhere
+		zp.setFileNameInZip(FILE_NAME); // Make ZIP files reproducible to allow deduplication if supported by the DBMS
 		if (parameters.isEncryptionRequired()) {
 			zp.setEncryptFiles(true);
 			zp.setEncryptionMethod(EncryptionMethod.AES);
