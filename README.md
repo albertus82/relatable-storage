@@ -46,6 +46,7 @@ CREATE TABLE storage (
     creation_time    TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 ```
+> When not using encrypion, you can also enable BLOB deduplication, if supported by your DBMS.
 
 ### Sample Java code
 
