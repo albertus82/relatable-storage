@@ -9,7 +9,7 @@ RelaTable Storage
 
 * Files are always stored internally in ZIP format in order to get CRC-32 check, compression and AES encryption for free.
    * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/storage/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/storage/io/Compression.java#L18).
-   * Compression and encryption are transparent for the client, so no manual *unzip* is needed.
+   * Compression and encryption are transparent to the client, so no manual *unzip* is needed.
    * The `CONTENT_LENGTH` value represents the *original uncompressed size* of the object, it is NOT the BLOB length.
 * This store has a flat structure instead of a hierarchy, so there is no direct support for things like directories or folders, but being `FILENAME` a object key string of up to 1,024 characters with no constraints other than uniqueness, you can use common prefixes (like `foo/`, `bar/`) to organize your objects simulating a hierarchical structure. For more info, you can check the [Amazon S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html) because the semantics are similar.
 * This library requires **JDK 11** and depends on the [Spring Framework](https://spring.io/projects/spring-framework) but **no Spring Context is actually needed** (see the [sample Java code](#sample-java-code) below).
