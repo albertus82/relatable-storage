@@ -5,7 +5,7 @@ RelaTable Storage
 [![Build](https://github.com/albertus82/relatable-storage/actions/workflows/build.yml/badge.svg)](https://github.com/albertus82/relatable-storage/actions)
 [![Known Vulnerabilities](https://snyk.io/test/github/albertus82/relatable-storage/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/albertus82/relatable-storage?targetFile=pom.xml)
 
-### Java library to implement a RDBMS-based file storage with compression and encryption support
+### Java library for RDBMS-based file storage with compression and encryption support
 
 * Files are always stored internally in ZIP format in order to get CRC-32 check, compression and AES encryption for free.
    * The compression level is customizable from [`NONE`](src/main/java/io/github/albertus82/storage/io/Compression.java#L9) to [`HIGH`](src/main/java/io/github/albertus82/storage/io/Compression.java#L18).
