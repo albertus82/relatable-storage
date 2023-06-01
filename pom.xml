@@ -300,9 +300,9 @@
 						<configuration>
 							<target>
 								<property name="release.file" value="${project.build.directory}/release.md" />
-								<property name="release.directory" value="${project.build.directory}/checksums" />
+								<property name="checksums.directory" value="${project.build.directory}/checksums" />
 								<delete file="${release.file}" />
-								<checksum algorithm="SHA-256" todir="${release.directory}" forceoverwrite="yes" fileext=".sha256" pattern="* {1}&#13;&#10;[`{0}`](https://www.virustotal.com/it/file/{0}/analysis/)">
+								<checksum algorithm="SHA-256" todir="${checksums.directory}" forceoverwrite="yes" fileext=".sha256" pattern="* {1}&#13;&#10;[`{0}`](https://www.virustotal.com/it/file/{0}/analysis/)">
 									<fileset dir="${project.build.directory}">
 										<include name="*.jar" />
 									</fileset>
@@ -318,7 +318,7 @@
 								]]></echo>
 								<echo file="${release.file}" append="true" message="&#13;&#10;&#13;&#10;### Checksums SHA-256&#13;&#10;&#13;&#10;" />
 								<concat destfile="${release.file}" append="true">
-									<fileset dir="${release.directory}" />
+									<fileset dir="${checksums.directory}" />
 								</concat>
 								<loadfile property="release.file.contents" srcFile="${release.file}" />
 								<echo level="info" message="${release.file.contents}" />
