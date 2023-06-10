@@ -1,6 +1,7 @@
 package io.github.albertus82.storage.jdbc;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,8 +48,10 @@ class SampleCodeTest {
 		StorageOperations store = new RelaTableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor());
 		store.put(new PathResource(tempFile), "myStoredFile.ext");
 		Resource resource = store.get("myStoredFile.ext");
-		byte[] bytes = resource.getInputStream().readAllBytes();
-		Assertions.assertArrayEquals(tempFileContents, bytes);
+		try (InputStream in = resource.getInputStream()) {
+			byte[] bytes = in.readAllBytes();
+			Assertions.assertArrayEquals(tempFileContents, bytes);
+		}
 	}
 
 }

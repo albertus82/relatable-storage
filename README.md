@@ -55,7 +55,9 @@ DataSource dataSource = new DriverManagerDataSource("jdbc:h2:mem:test;DB_CLOSE_D
 StorageOperations storage = new RelaTableStorage(new JdbcTemplate(dataSource), "STORAGE", new FileBufferedBlobExtractor()); // can be customized, see Javadoc
 storage.put(new PathResource("path/to/myFile.ext"), "myStoredFile.ext"); // the second argument can be prefixed to simulate a hierarchical structure
 Resource resource = storage.get("myStoredFile.ext");
-byte[] bytes = resource.getInputStream().readAllBytes(); // not intended for reading input streams with large amounts of data!
+try (InputStream in = resource.getInputStream()) {
+    byte[] bytes = in.readAllBytes(); // not intended for reading input streams with large amounts of data!
+}
 ```
 
 See also [SampleCodeTest](src/test/java/io/github/albertus82/storage/jdbc/SampleCodeTest.java) for a runnable JUnit test based on this code.
