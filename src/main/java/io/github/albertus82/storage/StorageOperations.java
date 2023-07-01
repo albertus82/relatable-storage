@@ -29,68 +29,68 @@ public interface StorageOperations {
 	/**
 	 * Gets a reference to the specified file in the storage.
 	 *
-	 * @param fileName the name of the desired file (unique key)
+	 * @param filename the name of the desired file (unique key)
 	 *
 	 * @return the resource representing the requested object
 	 *
-	 * @throws NoSuchFileException if the specified {@code fileName} does not exist
+	 * @throws NoSuchFileException if the specified {@code filename} does not exist
 	 * @throws IOException if an I/O error occurs
 	 */
-	Resource get(String fileName) throws NoSuchFileException, IOException;
+	Resource get(String filename) throws NoSuchFileException, IOException;
 
 	/**
 	 * Stores a new file.
 	 *
 	 * @param resource the data source of the file
-	 * @param fileName the name of the file to create
+	 * @param filename the name of the file to create
 	 * @param options options specifying how the file is opened
 	 *
 	 * @return the resource representing the newly created object.
 	 *
-	 * @throws FileAlreadyExistsException if a file with the same {@code fileName}
+	 * @throws FileAlreadyExistsException if a file with the same {@code filename}
 	 *         already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	Resource put(Resource resource, String fileName, OpenOption... options) throws FileAlreadyExistsException, IOException;
+	Resource put(Resource resource, String filename, OpenOption... options) throws FileAlreadyExistsException, IOException;
 
 	/**
 	 * Moves or renames a file.
 	 *
-	 * @param oldFileName the current (old) file name
-	 * @param newFileName the desired (new) file name
+	 * @param oldFilename the current (old) file name
+	 * @param newFilename the desired (new) file name
 	 * @param options options specifying how the move should be done
 	 *
 	 * @return the resource representing the moved object.
 	 *
-	 * @throws NoSuchFileException if {@code oldFileName} does not exist
-	 * @throws FileAlreadyExistsException if {@code newFileName} already exists
+	 * @throws NoSuchFileException if {@code oldFilename} does not exist
+	 * @throws FileAlreadyExistsException if {@code newFilename} already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	Resource move(String oldFileName, String newFileName, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
+	Resource move(String oldFilename, String newFilename, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
 
 	/**
 	 * Copies a file.
 	 *
-	 * @param sourceFileName the source file name
-	 * @param destFileName the destination file name
+	 * @param sourceFilename the source file name
+	 * @param destFilename the destination file name
 	 * @param options options specifying how the copy should be done
 	 *
 	 * @return the resource representing the newly created object.
 	 *
-	 * @throws NoSuchFileException if {@code sourceFileName} does not exist
-	 * @throws FileAlreadyExistsException if {@code destFileName} already exists
+	 * @throws NoSuchFileException if {@code sourceFilename} does not exist
+	 * @throws FileAlreadyExistsException if {@code destFilename} already exists
 	 * @throws IOException if an I/O error occurs
 	 */
-	Resource copy(String sourceFileName, String destFileName, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
+	Resource copy(String sourceFilename, String destFilename, CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException;
 
 	/**
 	 * Deletes a file.
 	 *
-	 * @param fileName the name of the file (unique key)
+	 * @param filename the name of the file (unique key)
 	 *
-	 * @throws NoSuchFileException if {@code fileName} does not exist
+	 * @throws NoSuchFileException if {@code filename} does not exist
 	 * @throws IOException if an I/O error occurs
 	 */
-	void delete(String fileName) throws NoSuchFileException, IOException;
+	void delete(String filename) throws NoSuchFileException, IOException;
 
 }

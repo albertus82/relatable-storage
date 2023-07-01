@@ -132,12 +132,12 @@ class PerformanceTest {
 				tempFile = TestUtils.createDummyFile(DataSize.ofMegabytes(FILE_SIZE));
 				final Path f = tempFile;
 				try {
-					final String fileName = UUID.randomUUID().toString();
+					final String filename = UUID.randomUUID().toString();
 					try (final InputStream is = Files.newInputStream(f)) {
 						final byte currentIteration = i;
 						Assertions.assertDoesNotThrow(() -> {
 							final long t0 = System.nanoTime();
-							store.put(new InputStreamResource(is), fileName);
+							store.put(new InputStreamResource(is), filename);
 							final long t = System.nanoTime() - t0;
 							log.log(Level.FINE, "Written in {0} ms.", TimeUnit.NANOSECONDS.toMillis(t));
 							System.out.printf(" %d%% **", 100 / (ITERATION_COUNT * 2) * (currentIteration * 2 - 1));
@@ -156,7 +156,7 @@ class PerformanceTest {
 					}
 					final MessageDigest digestStored = MessageDigest.getInstance(hashAlgorithm);
 					final long t0 = System.nanoTime();
-					final DatabaseResource dr = store.get(fileName);
+					final DatabaseResource dr = store.get(filename);
 					try (final InputStream stored = dr.getInputStream()) {
 						int bytesCount = 0;
 						while ((bytesCount = stored.read(buffer)) != -1) {

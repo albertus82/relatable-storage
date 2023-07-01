@@ -263,8 +263,8 @@ public class RelaTableStorage implements StorageOperations {
 	}
 
 	@Override
-	public DatabaseResource get(final String fileName) throws NoSuchFileException, IOException {
-		Objects.requireNonNull(fileName, "fileName must not be null");
+	public DatabaseResource get(final String filename) throws NoSuchFileException, IOException {
+		Objects.requireNonNull(filename, "filename must not be null");
 		final StringBuilder sb = new StringBuilder("SELECT content_length, last_modified, uuid_base64url FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
@@ -272,16 +272,16 @@ public class RelaTableStorage implements StorageOperations {
 		try {
 			return jdbcOperations.query(sql, rs -> {
 				if (rs.next()) {
-					return new DatabaseResource(fileName, rs.getLong(1), rs.getTimestamp(2).getTime(), rs.getString(3));
+					return new DatabaseResource(filename, rs.getLong(1), rs.getTimestamp(2).getTime(), rs.getString(3));
 				}
 				else {
 					throw new EmptyResultDataAccessException(1);
 				}
-			}, fileName);
+			}, filename);
 		}
 		catch (final EmptyResultDataAccessException e) {
-			logException(e, () -> fileName);
-			throw new NoSuchFileException(fileName);
+			logException(e, () -> filename);
+			throw new NoSuchFileException(filename);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -289,9 +289,9 @@ public class RelaTableStorage implements StorageOperations {
 	}
 
 	@Override
-	public DatabaseResource put(final Resource resource, final String fileName, final OpenOption... options) throws FileAlreadyExistsException, IOException {
+	public DatabaseResource put(final Resource resource, final String filename, final OpenOption... options) throws FileAlreadyExistsException, IOException {
 		Objects.requireNonNull(resource, "resource must not be null");
-		Objects.requireNonNull(fileName, "fileName must not be null");
+		Objects.requireNonNull(filename, "filename must not be null");
 		Objects.requireNonNull(options, "options must not be null");
 		final Collection<StandardOpenOption> unsupportedOptions = EnumSet.of(StandardOpenOption.APPEND, StandardOpenOption.DELETE_ON_CLOSE);
 		for (final OpenOption option : options) {
@@ -305,16 +305,16 @@ public class RelaTableStorage implements StorageOperations {
 		final Collection<OpenOption> optionCollection = Set.of(options);
 		final DatabaseResource stored;
 		if (optionCollection.contains(StandardOpenOption.TRUNCATE_EXISTING) && !optionCollection.contains(StandardOpenOption.CREATE_NEW)) {
-			final UUID existingUUID = findUUIDByFileName(fileName);
+			final UUID existingUUID = findUUIDByFilename(filename);
 			if (existingUUID == null) {
-				stored = putInsert(resource, fileName);
+				stored = putInsert(resource, filename);
 			}
 			else {
-				stored = putUpdate(resource, fileName, existingUUID);
+				stored = putUpdate(resource, filename, existingUUID);
 			}
 		}
 		else {
-			stored = putInsert(resource, fileName);
+			stored = putInsert(resource, filename);
 		}
 		final StringBuilder sb = new StringBuilder("UPDATE ");
 		appendSchemaAndTableName(sb).append(" SET content_length=? WHERE uuid_base64url=?");
@@ -329,21 +329,21 @@ public class RelaTableStorage implements StorageOperations {
 		return stored;
 	}
 
-	private DatabaseResource putInsert(final Resource resource, final String fileName) throws IOException {
+	private DatabaseResource putInsert(final Resource resource, final String filename) throws IOException {
 		final StringBuilder sql = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sql);
 		sql.append(" (filename, last_modified, compressed, encrypted, uuid_base64url, file_contents) VALUES (?,?,?,?,?,?)");
-		return store(resource, fileName, sql.toString(), null);
+		return store(resource, filename, sql.toString(), null);
 	}
 
-	private DatabaseResource putUpdate(final Resource resource, final String fileName, final UUID existingUUID) throws IOException {
+	private DatabaseResource putUpdate(final Resource resource, final String filename, final UUID existingUUID) throws IOException {
 		final StringBuilder sql = new StringBuilder("UPDATE ");
 		appendSchemaAndTableName(sql);
 		sql.append(" SET filename=?, last_modified=?, compressed=?, encrypted=?, uuid_base64url=?, file_contents=? WHERE uuid_base64url=?");
-		return store(resource, fileName, sql.toString(), existingUUID);
+		return store(resource, filename, sql.toString(), existingUUID);
 	}
 
-	private DatabaseResource store(final Resource resource, final String fileName, final String sql, final UUID existingUUID) throws IOException, StreamCorruptedException, FileAlreadyExistsException {
+	private DatabaseResource store(final Resource resource, final String filename, final String sql, final UUID existingUUID) throws IOException, StreamCorruptedException, FileAlreadyExistsException {
 		final Long contentLength = resource.isOpen() ? null : resource.contentLength();
 		final Timestamp lastModified = determineLastModifiedTimestamp(resource);
 		final boolean compressed = !Compression.NONE.equals(compression);
@@ -356,7 +356,7 @@ public class RelaTableStorage implements StorageOperations {
 					@Override
 					protected void setValues(final PreparedStatement ps, final LobCreator lobCreator) throws SQLException {
 						int columnIndex = 0;
-						ps.setString(++columnIndex, fileName);
+						ps.setString(++columnIndex, filename);
 						ps.setTimestamp(++columnIndex, lastModified);
 						ps.setBoolean(++columnIndex, compressed);
 						ps.setBoolean(++columnIndex, encrypted);
@@ -371,11 +371,11 @@ public class RelaTableStorage implements StorageOperations {
 			if (contentLength != null && contentLength.longValue() != cis.getCount()) {
 				throw new StreamCorruptedException("Inconsistent content length (expected: " + contentLength + ", actual: " + cis.getCount() + ")");
 			}
-			return new DatabaseResource(fileName, cis.getCount(), lastModified.getTime(), uuidBase64Url);
+			return new DatabaseResource(filename, cis.getCount(), lastModified.getTime(), uuidBase64Url);
 		}
 		catch (final DuplicateKeyException e) {
-			logException(e, () -> fileName);
-			throw new FileAlreadyExistsException(fileName);
+			logException(e, () -> filename);
+			throw new FileAlreadyExistsException(filename);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
@@ -383,45 +383,45 @@ public class RelaTableStorage implements StorageOperations {
 	}
 
 	@Override
-	public DatabaseResource copy(final String sourceFileName, final String destFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
-		Objects.requireNonNull(sourceFileName, "sourceFileName must not be null");
-		Objects.requireNonNull(destFileName, "destFileName must not be null");
+	public DatabaseResource copy(final String sourceFilename, final String destFilename, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+		Objects.requireNonNull(sourceFilename, "sourceFilename must not be null");
+		Objects.requireNonNull(destFilename, "destFilename must not be null");
 		Objects.requireNonNull(options, "options must not be null");
 		try {
 			if (Set.of(options).contains(StandardCopyOption.REPLACE_EXISTING)) {
-				final UUID existingUUID = findUUIDByFileName(destFileName);
+				final UUID existingUUID = findUUIDByFilename(destFilename);
 				if (existingUUID == null) {
-					copyInsert(sourceFileName, destFileName);
+					copyInsert(sourceFilename, destFilename);
 				}
 				else {
-					copyUpdate(sourceFileName, existingUUID);
+					copyUpdate(sourceFilename, existingUUID);
 				}
 			}
 			else {
-				copyInsert(sourceFileName, destFileName);
+				copyInsert(sourceFilename, destFilename);
 			}
 		}
 		catch (final DuplicateKeyException e) {
-			throw new FileAlreadyExistsException(destFileName);
+			throw new FileAlreadyExistsException(destFilename);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
-		return get(destFileName);
+		return get(destFilename);
 	}
 
-	private void copyInsert(final String sourceFileName, final String destFileName) throws IOException, NoSuchFileException, FileAlreadyExistsException {
+	private void copyInsert(final String sourceFilename, final String destFilename) throws IOException, NoSuchFileException, FileAlreadyExistsException {
 		final StringBuilder sb = new StringBuilder("INSERT INTO ");
 		appendSchemaAndTableName(sb).append(" (filename, uuid_base64url, content_length, last_modified, compressed, encrypted, file_contents) SELECT ?, ?, content_length, last_modified, compressed, encrypted, file_contents FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
-		if (jdbcOperations.update(sql, destFileName, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName) == 0) {
-			throw new NoSuchFileException(sourceFileName);
+		if (jdbcOperations.update(sql, destFilename, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFilename) == 0) {
+			throw new NoSuchFileException(sourceFilename);
 		}
 	}
 
-	private void copyUpdate(final String sourceFileName, final UUID existingUUID) throws IOException {
+	private void copyUpdate(final String sourceFilename, final UUID existingUUID) throws IOException {
 		final StringBuilder sb = new StringBuilder("UPDATE ");
 		appendSchemaAndTableName(sb).append(" o SET o.uuid_base64url=?, o.content_length=(SELECT i.content_length FROM ");
 		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?), o.last_modified=(SELECT i.last_modified FROM ");
@@ -431,52 +431,52 @@ public class RelaTableStorage implements StorageOperations {
 		appendSchemaAndTableName(sb).append(" i WHERE i.filename=?) WHERE o.uuid_base64url=?");
 		final String sql = sb.toString();
 		logStatement(sql);
-		final int affectedRows = jdbcOperations.update(sql, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFileName, sourceFileName, sourceFileName, sourceFileName, sourceFileName, UUIDUtils.toBase64Url(existingUUID));
+		final int affectedRows = jdbcOperations.update(sql, UUIDUtils.toBase64Url(UUID.randomUUID()), sourceFilename, sourceFilename, sourceFilename, sourceFilename, sourceFilename, UUIDUtils.toBase64Url(existingUUID));
 		if (affectedRows != 1) {
 			throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(sql, 1, affectedRows);
 		}
 	}
 
 	@Override
-	public DatabaseResource move(final String oldFileName, final String newFileName, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
-		Objects.requireNonNull(oldFileName, "oldFileName must not be null");
-		Objects.requireNonNull(newFileName, "newFileName must not be null");
+	public DatabaseResource move(final String oldFilename, final String newFilename, final CopyOption... options) throws NoSuchFileException, FileAlreadyExistsException, IOException {
+		Objects.requireNonNull(oldFilename, "oldFilename must not be null");
+		Objects.requireNonNull(newFilename, "newFilename must not be null");
 		Objects.requireNonNull(options, "options must not be null");
 		final Collection<CopyOption> optionCollection = Set.of(options);
 		if (optionCollection.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
 			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active.");
 		}
 		try {
-			if (optionCollection.contains(StandardCopyOption.REPLACE_EXISTING) && findUUIDByFileName(newFileName) != null) {
-				delete(newFileName);
+			if (optionCollection.contains(StandardCopyOption.REPLACE_EXISTING) && findUUIDByFilename(newFilename) != null) {
+				delete(newFilename);
 			}
 			final StringBuilder sb = new StringBuilder("UPDATE ");
 			appendSchemaAndTableName(sb).append(" SET filename=? WHERE filename=?");
 			final String sql = sb.toString();
 			logStatement(sql);
-			if (jdbcOperations.update(sql, newFileName, oldFileName) == 0) {
-				throw new NoSuchFileException(oldFileName);
+			if (jdbcOperations.update(sql, newFilename, oldFilename) == 0) {
+				throw new NoSuchFileException(oldFilename);
 			}
 		}
 		catch (final DuplicateKeyException e) {
-			throw new FileAlreadyExistsException(newFileName);
+			throw new FileAlreadyExistsException(newFilename);
 		}
 		catch (final DataAccessException e) {
 			throw new IOException(e);
 		}
-		return get(newFileName);
+		return get(newFilename);
 	}
 
 	@Override
-	public void delete(final String fileName) throws NoSuchFileException, IOException {
-		Objects.requireNonNull(fileName, "fileName must not be null");
+	public void delete(final String filename) throws NoSuchFileException, IOException {
+		Objects.requireNonNull(filename, "filename must not be null");
 		final StringBuilder sb = new StringBuilder("DELETE FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
 		logStatement(sql);
 		try {
-			if (jdbcOperations.update(sql, fileName) == 0) {
-				throw new NoSuchFileException(fileName);
+			if (jdbcOperations.update(sql, filename) == 0) {
+				throw new NoSuchFileException(filename);
 			}
 		}
 		catch (final DataAccessException e) {
@@ -487,13 +487,13 @@ public class RelaTableStorage implements StorageOperations {
 	/** {@link Resource} implementation with a RDBMS table target. */
 	public class DatabaseResource extends AbstractResource { // NOSONAR Override the "equals" method in this class. Subclasses that add fields should override "equals" (java:S2160)
 
-		private final String fileName;
+		private final String filename;
 		private final long contentLength;
 		private final long lastModified;
 		private final String uuidBase64Url;
 
-		private DatabaseResource(final String fileName, final long contentLength, final long lastModified, final String uuidBase64Url) {
-			this.fileName = Objects.requireNonNull(fileName, "fileName must not be null");
+		private DatabaseResource(final String filename, final long contentLength, final long lastModified, final String uuidBase64Url) {
+			this.filename = Objects.requireNonNull(filename, "filename must not be null");
 			this.uuidBase64Url = Objects.requireNonNull(uuidBase64Url, "uuidBase64Url must not be null");
 			this.contentLength = contentLength;
 			this.lastModified = lastModified;
@@ -502,7 +502,7 @@ public class RelaTableStorage implements StorageOperations {
 		/** Returns the resource key, that usually is the file name. */
 		@Override
 		public String getFilename() {
-			return fileName;
+			return filename;
 		}
 
 		/** Returns the original (uncompressed) file size. */
@@ -548,7 +548,7 @@ public class RelaTableStorage implements StorageOperations {
 				appendSchemaAndTableName(sb).append(" WHERE filename=?");
 				final String sql = sb.toString();
 				logStatement(sql);
-				return jdbcOperations.queryForObject(sql, boolean.class, fileName);
+				return jdbcOperations.queryForObject(sql, boolean.class, filename);
 			}
 			catch (final DataAccessException | IOException e) {
 				logException(e, () -> "Could not retrieve data for existence check of " + getDescription());
@@ -562,7 +562,7 @@ public class RelaTableStorage implements StorageOperations {
 		 */
 		@Override
 		public String getDescription() {
-			return "Database resource [" + fileName + "]";
+			return "Database resource [" + filename + "]";
 		}
 
 		/**
@@ -586,11 +586,11 @@ public class RelaTableStorage implements StorageOperations {
 					else {
 						throw new EmptyResultDataAccessException(1);
 					}
-				}, fileName);
+				}, filename);
 			}
 			catch (final EmptyResultDataAccessException e) {
-				logException(e, () -> fileName);
-				throw new NoSuchFileException(fileName);
+				logException(e, () -> filename);
+				throw new NoSuchFileException(filename);
 			}
 			catch (final DataAccessException e) {
 				throw new IOException(e);
@@ -640,7 +640,7 @@ public class RelaTableStorage implements StorageOperations {
 		log.log(Level.FINE, thrown, msgSupplier);
 	}
 
-	private UUID findUUIDByFileName(final String fileName) throws IOException {
+	private UUID findUUIDByFilename(final String filename) throws IOException {
 		final StringBuilder sb = new StringBuilder("SELECT uuid_base64url FROM ");
 		appendSchemaAndTableName(sb).append(" WHERE filename=?");
 		final String sql = sb.toString();
@@ -652,7 +652,7 @@ public class RelaTableStorage implements StorageOperations {
 			else {
 				return null;
 			}
-		}, fileName);
+		}, filename);
 	}
 
 	private String sanitizeIdentifier(final String identifier) throws IOException {

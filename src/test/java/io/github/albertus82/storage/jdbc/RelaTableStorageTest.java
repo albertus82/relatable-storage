@@ -626,15 +626,15 @@ class RelaTableStorageTest {
 				try {
 					for (final Compression compression : Compression.values()) {
 						for (final BinaryStreamProvider bsp : new BinaryStreamProvider[] { new PipeBasedBinaryStreamProvider(), new PipeBasedBinaryStreamProvider().withPipeSize(512), new PipeBasedBinaryStreamProvider().withPipeSize(1_048_576), new FileBufferedBinaryStreamProvider(), new MemoryBufferedBinaryStreamProvider() }) {
-							final String fileName = UUID.randomUUID().toString();
+							final String filename = UUID.randomUUID().toString();
 							final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "STORAGE", be).withCompression(compression).withBinaryStreamProvider(bsp).withEncryption("testpass".toCharArray());
 							try (final InputStream is = Files.newInputStream(f)) {
-								Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), fileName));
+								Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), filename));
 							}
 
 							final byte[] buffer = new byte[8192];
 							final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-							final DatabaseResource dr = store.get(fileName);
+							final DatabaseResource dr = store.get(filename);
 							try (final InputStream stored = dr.getInputStream()) {
 								int bytesCount = 0;
 								while ((bytesCount = stored.read(buffer)) != -1) {
@@ -684,15 +684,15 @@ class RelaTableStorageTest {
 			final byte[] sha256Source = digestSource.digest();
 
 			for (final Compression compression : Compression.values()) {
-				final String fileName = UUID.randomUUID().toString();
+				final String filename = UUID.randomUUID().toString();
 				final RelaTableStorage store = new RelaTableStorage(jdbcTemplate, "STORAGE", new DirectBlobExtractor()).withCompression(compression);
 				try (final InputStream is = Files.newInputStream(tempFile)) {
-					Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), fileName));
+					Assertions.assertDoesNotThrow(() -> store.put(new InputStreamResource(is), filename));
 				}
 
 				final byte[] buffer = new byte[8192];
 				final MessageDigest digestStored = MessageDigest.getInstance("SHA-256");
-				final DatabaseResource dr = store.get(fileName);
+				final DatabaseResource dr = store.get(filename);
 				try (final InputStream stored = dr.getInputStream()) {
 					int bytesCount = 0;
 					while ((bytesCount = stored.read(buffer)) != -1) {
@@ -701,7 +701,7 @@ class RelaTableStorageTest {
 				}
 				final byte[] sha256Stored = digestStored.digest();
 				Assertions.assertArrayEquals(sha256Source, sha256Stored);
-				Assertions.assertEquals(fileName, dr.getFilename());
+				Assertions.assertEquals(filename, dr.getFilename());
 				Assertions.assertNotNull(dr.getUUID());
 				Assertions.assertNotNull(dr.getURI());
 				Assertions.assertEquals(fileSize.toBytes(), dr.contentLength());
