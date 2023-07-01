@@ -247,7 +247,7 @@ public class RelaTableStorage implements StorageOperations {
 				else {
 					sb.append(" OR ");
 				}
-				sb.append("filename LIKE ? ESCAPE ?");
+				sb.append("UPPER(filename) LIKE UPPER(?) ESCAPE ?");
 				args.add(like);
 				args.add(SQL_ESCAPE);
 			}
