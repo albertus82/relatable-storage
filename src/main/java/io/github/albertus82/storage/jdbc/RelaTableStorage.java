@@ -103,7 +103,7 @@ public class RelaTableStorage implements StorageOperations {
 	 * @param password the encryption/decryption password (can be null, so that
 	 *        neither encryption nor decryption will be performed).
 	 */
-	protected RelaTableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, final String schema, final char[] password) {
+	protected RelaTableStorage(final JdbcOperations jdbcOperations, final String table, final BlobExtractor blobExtractor, final BinaryStreamProvider binaryStreamProvider, final Compression compression, final boolean alwaysQuotedIdentifiers, String schema, final char[] password) {
 		Objects.requireNonNull(jdbcOperations, "jdbcOperations must not be null");
 		Objects.requireNonNull(table, "table must not be null");
 		Objects.requireNonNull(blobExtractor, "blobExtractor must not be null");
@@ -111,6 +111,9 @@ public class RelaTableStorage implements StorageOperations {
 		Objects.requireNonNull(compression, "compression must not be null");
 		if (table.isEmpty()) {
 			throw new IllegalArgumentException("table must not be empty");
+		}
+		if (schema != null && schema.isEmpty()) {
+			schema = null;
 		}
 		this.jdbcOperations = jdbcOperations;
 		this.table = table;
