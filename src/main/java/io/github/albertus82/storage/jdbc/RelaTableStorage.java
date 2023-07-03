@@ -113,7 +113,7 @@ public class RelaTableStorage implements StorageOperations {
 			throw new IllegalArgumentException("table must not be empty");
 		}
 		if (schema != null && schema.isEmpty()) {
-			schema = null;
+			throw new IllegalArgumentException("schema must not be empty");
 		}
 		this.jdbcOperations = jdbcOperations;
 		this.table = table;
