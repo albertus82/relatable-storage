@@ -447,7 +447,7 @@ public class RelaTableStorage implements StorageOperations {
 		Objects.requireNonNull(options, "options must not be null");
 		final Collection<CopyOption> optionCollection = Set.of(options);
 		if (optionCollection.contains(StandardCopyOption.ATOMIC_MOVE) && !TransactionSynchronizationManager.isActualTransactionActive()) {
-			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active.");
+			throw new IllegalStateException(StandardCopyOption.ATOMIC_MOVE + " requires an actual transaction being active");
 		}
 		try {
 			if (optionCollection.contains(StandardCopyOption.REPLACE_EXISTING) && findUUIDByFilename(newFilename) != null) {
