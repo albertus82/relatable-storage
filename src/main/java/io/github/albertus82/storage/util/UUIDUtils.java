@@ -64,7 +64,7 @@ public class UUIDUtils {
 	}
 
 	/**
-	 * Converts the specified number into a new UUID object.
+	 * Converts the specified number into a new {@link UUID} object.
 	 * 
 	 * @param num the numeric representation of the UUID, e.g.
 	 *        {@code 281831033846701114428451845565925261418}
