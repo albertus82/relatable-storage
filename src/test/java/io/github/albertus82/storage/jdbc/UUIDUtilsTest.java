@@ -11,7 +11,14 @@ class UUIDUtilsTest {
 
 	@Test
 	void test() {
-		final UUID a = UUID.randomUUID();
+		test(new UUID(0, 0));
+		for (short i = 0; i < Short.MAX_VALUE; i++) {
+			test(UUID.randomUUID());
+		}
+		test(new UUID(0xFFFFFFFFFFFFFFFFL, 0xFFFFFFFFFFFFFFFFL));
+	}
+
+	private static void test(final UUID a) {
 		final String s = UUIDUtils.toBase64Url(a);
 		Assertions.assertEquals(22, s.length());
 		final UUID b = UUIDUtils.fromBase64Url(s);
