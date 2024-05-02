@@ -18,7 +18,7 @@ public class UUIDUtils {
 
 	private static final BigInteger B = BigInteger.ONE.shiftLeft(64);
 	private static final BigInteger L = BigInteger.valueOf(Long.MAX_VALUE);
-	private static final BigInteger X = BigInteger.ONE.shiftLeft(128).subtract(BigInteger.ONE);
+	private static final BigInteger X = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16);
 
 	private static final Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 	private static final Decoder decoder = Base64.getUrlDecoder();
